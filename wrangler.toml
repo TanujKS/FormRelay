@@ -2,6 +2,9 @@ name = "form-relay"
 main = "src/worker.ts"
 compatibility_date = "2025-01-09"
 
+[observability.logs]
+enabled = true
+
 # Expose on your domain
 routes = [{ pattern = "forms.tanuj.xyz/*", zone_name = "tanuj.xyz" }]
 

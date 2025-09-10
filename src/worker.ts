@@ -15,14 +15,17 @@ type Env = {
   export default {
     async fetch(req: Request, env: Env, ctx: ExecutionContext) {
       const url = new URL(req.url);
+      console.log(`[${new Date().toISOString()}] ${req.method} ${url.pathname} - IP: ${req.headers.get("CF-Connecting-IP") || "unknown"}`);
   
       // CORS preflight for JS clients (HTML <form> posts don't need this)
       if (req.method === "OPTIONS") {
+        console.log("Handling CORS preflight request");
         return cors(new Response(null, { status: 204 }));
       }
   
       // Handle different routes
       if (url.pathname === "/thank-you") {
+        console.log("Serving thank you page");
         return cors(new Response(`
           <!DOCTYPE html>
           <html>
@@ -45,18 +48,44 @@ type Env = {
       }
 
       if (url.pathname !== "/submit") {
+        console.log(`404: Path not found: ${url.pathname}`);
         return new Response("Not Found", { status: 404 });
       }
   
       if (req.method !== "POST") {
+        console.log(`405: Method not allowed: ${req.method}`);
         return cors(new Response("Method Not Allowed", { status: 405 }));
       }
   
       try {
+        // Check environment variables first
+        console.log("Checking environment variables...");
+        if (!env.MAILGUN_API_KEY) {
+          console.error("❌ MAILGUN_API_KEY is missing!");
+          throw new Error("MAILGUN_API_KEY environment variable is not set");
+        }
+        if (!env.MAILGUN_DOMAIN) {
+          console.error("❌ MAILGUN_DOMAIN is missing!");
+          throw new Error("MAILGUN_DOMAIN environment variable is not set");
+        }
+        if (!env.NOTIFY_TO) {
+          console.error("❌ NOTIFY_TO is missing!");
+          throw new Error("NOTIFY_TO environment variable is not set");
+        }
+        if (!env.FROM_EMAIL) {
+          console.error("❌ FROM_EMAIL is missing!");
+          throw new Error("FROM_EMAIL environment variable is not set");
+        }
+        console.log("✅ All required environment variables are present");
+
         const data = await parseBody(req);
+        console.log("Form data received:", JSON.stringify(data, null, 2));
   
         // Optional: basic honeypot (bots fill hidden field)
-        if (data._hp) return cors(new Response("OK", { status: 200 }));
+        if (data._hp) {
+          console.log("🤖 Honeypot triggered - likely a bot");
+          return cors(new Response("OK", { status: 200 }));
+        }
   
         // Optional: rate limit per IP
         // if (env.RATE_KV) {
@@ -84,7 +113,15 @@ type Env = {
         const formName = data._form || "contact";
         const subject = `New ${formName} submission`;
         const text = JSON.stringify(data, null, 2);
+        
+        console.log(`📧 Sending email via Mailgun:`);
+        console.log(`  From: ${env.FROM_EMAIL}`);
+        console.log(`  To: ${env.NOTIFY_TO}`);
+        console.log(`  Subject: ${subject}`);
+        console.log(`  Domain: ${env.MAILGUN_DOMAIN}`);
+        
         await sendWithMailgun(env, { to: env.NOTIFY_TO, from: env.FROM_EMAIL, subject, text });
+        console.log("✅ Email sent successfully via Mailgun");
   
         // Redirect target:
         // priority: explicit _redirect -> ?redirect= param -> default /thank-you
@@ -94,6 +131,7 @@ type Env = {
         const target = explicit || qsRedirect || fallback;
   
         const absolute = new URL(target, req.url).toString();
+        console.log(`🔄 Redirecting to: ${absolute}`);
         
         // Create a redirect response with CORS headers
         const redirectResponse = new Response(null, {
@@ -108,7 +146,12 @@ type Env = {
         
         return redirectResponse;
       } catch (err: any) {
-        console.error(err);
+        console.error("❌ Form submission failed:", err);
+        console.error("Error details:", {
+          message: err.message,
+          stack: err.stack,
+          name: err.name
+        });
         // Return JSON for JS clients; HTML forms will just see a simple text
         return cors(new Response(`Error: ${err.message || err}`, { status: 400 }));
       }
@@ -131,7 +174,10 @@ type Env = {
   }
   
   async function sendWithMailgun(env: Env, { to, from, subject, text }: { to: string; from: string; subject: string; text: string; }) {
-    const res = await fetch(`https://api.mailgun.net/v3/${env.MAILGUN_DOMAIN}/messages`, {
+    const url = `https://api.mailgun.net/v3/${env.MAILGUN_DOMAIN}/messages`;
+    console.log(`📡 Making request to Mailgun API: ${url}`);
+    
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: "Basic " + btoa("api:" + env.MAILGUN_API_KEY),
@@ -139,7 +185,18 @@ type Env = {
       },
       body: new URLSearchParams({ from, to, subject, text }),
     });
-    if (!res.ok) throw new Error(`Mailgun failed: ${res.status} ${await res.text()}`);
+    
+    console.log(`📡 Mailgun API response: ${res.status} ${res.statusText}`);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`❌ Mailgun API error: ${res.status} ${res.statusText}`);
+      console.error(`❌ Mailgun error response: ${errorText}`);
+      throw new Error(`Mailgun failed: ${res.status} ${errorText}`);
+    }
+    
+    const responseText = await res.text();
+    console.log(`✅ Mailgun API success: ${responseText}`);
   }
   
   // very light CORS; adjust origin list as needed

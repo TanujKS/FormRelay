@@ -95,14 +95,14 @@
         <h1>Local Development Test Form</h1>
         
         <div class="info">
-            <strong>Testing locally:</strong> This form submits to your local Wrangler dev server.
-            Make sure to run <code>npm run dev</code> first!
+            <strong>Testing production:</strong> This form submits to your deployed Cloudflare Worker.
+            Make sure you've set up your production secrets first!
         </div>
         
         <!-- Success/Error messages will appear here -->
         <div id="message"></div>
         
-        <form id="testForm" action="http://localhost:8787/submit" method="POST">
+        <form id="testForm" action="https://form-relay.tanujsiripurapu.workers.dev/submit" method="POST">
             <div class="form-group">
                 <label for="name">Name *</label>
                 <input type="text" id="name" name="name" required>
@@ -142,7 +142,7 @@
             const messageDiv = document.getElementById('message');
             
             try {
-                const response = await fetch('http://localhost:8787/submit', {
+                const response = await fetch('https://form-relay.tanujsiripurapu.workers.dev/submit', {
                     method: 'POST',
                     body: formData
                 });
@@ -155,7 +155,7 @@
                     messageDiv.innerHTML = `<div class="error">❌ Error: ${errorText}</div>`;
                 }
             } catch (error) {
-                messageDiv.innerHTML = `<div class="error">❌ Connection Error: ${error.message}<br><br>Make sure Wrangler dev server is running on localhost:8787</div>`;
+                messageDiv.innerHTML = `<div class="error">❌ Connection Error: ${error.message}<br><br>Check that your worker is deployed and secrets are configured.</div>`;
             }
         });
     </script>
