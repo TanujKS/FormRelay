@@ -1,8 +1,19 @@
+// Import form configurations from repository files
+import formConfigs from '../config/forms.json';
+import defaultConfigs from '../config/defaults.json';
+
+type FormConfig = {
+    name: string;
+    notifyTo: string[];
+    fromEmail?: string;
+    thankYouUrl?: string;
+    subject?: string;
+    enabled?: boolean;
+  };
+
 type Env = {
     MAILGUN_API_KEY: string;
     MAILGUN_DOMAIN: string; // e.g., "mail.tanuj.xyz"
-    NOTIFY_TO: string; // email to receive form submissions
-    FROM_EMAIL: string; // e.g., "forms@mail.tanuj.xyz"
   
     // Optional bindings
     RATE_KV?: KVNamespace;
@@ -23,9 +34,9 @@ type Env = {
         return cors(new Response(null, { status: 204 }));
       }
   
-      // Handle different routes
+      // Handle thank you pages for different forms
       if (url.pathname === "/thank-you") {
-        console.log("Serving thank you page");
+        console.log("Serving default thank you page");
         return cors(new Response(`
           <!DOCTYPE html>
           <html>
@@ -47,7 +58,43 @@ type Env = {
         }));
       }
 
-      if (url.pathname !== "/submit") {
+      // Handle form-specific thank you pages
+      if (url.pathname.endsWith("/thank-you")) {
+        const formName = url.pathname.split("/")[1]; // Extract form name from /ecofresh/thank-you
+        console.log(`Serving thank you page for form: ${formName}`);
+        
+        const formConfigs = getFormConfigs();
+        const formConfig = formConfigs[formName];
+        const formDisplayName = formConfig?.name || formName;
+        
+        return cors(new Response(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Thank You - ${formDisplayName}</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+              .success { color: #28a745; font-size: 24px; margin-bottom: 20px; }
+              .form-name { color: #007bff; font-size: 18px; margin-bottom: 10px; }
+            </style>
+          </head>
+          <body>
+            <div class="form-name">${formDisplayName}</div>
+            <div class="success">✅ Thank you! Your message has been sent successfully.</div>
+            <p>We'll get back to you soon.</p>
+          </body>
+          </html>
+        `, { 
+          status: 200,
+          headers: { "Content-Type": "text/html" }
+        }));
+      }
+
+      // Check if this is a form submission route (e.g., /submit, /ecofresh/submit, /contact/submit)
+      const isFormRoute = url.pathname === "/submit" || 
+                         (url.pathname.split('/').length === 3 && url.pathname.endsWith('/submit'));
+      
+      if (!isFormRoute) {
         console.log(`404: Path not found: ${url.pathname}`);
         return new Response("Not Found", { status: 404 });
       }
@@ -68,18 +115,21 @@ type Env = {
           console.error("❌ MAILGUN_DOMAIN is missing!");
           throw new Error("MAILGUN_DOMAIN environment variable is not set");
         }
-        if (!env.NOTIFY_TO) {
-          console.error("❌ NOTIFY_TO is missing!");
-          throw new Error("NOTIFY_TO environment variable is not set");
-        }
-        if (!env.FROM_EMAIL) {
-          console.error("❌ FROM_EMAIL is missing!");
-          throw new Error("FROM_EMAIL environment variable is not set");
-        }
         console.log("✅ All required environment variables are present");
 
         const data = await parseBody(req);
         console.log("Form data received:", JSON.stringify(data, null, 2));
+  
+        // Get form configuration
+        const formConfig = getFormConfig(url.pathname);
+        const formName = formConfig?.name || data._form || "contact";
+        const defaults = getDefaultConfigs();
+        
+        // Check if form is enabled
+        if (formConfig && formConfig.enabled === false) {
+          console.log(`❌ Form '${formName}' is disabled`);
+          return cors(new Response("Form is currently disabled", { status: 503 }));
+        }
   
         // Optional: basic honeypot (bots fill hidden field)
         if (data._hp) {
@@ -110,30 +160,46 @@ type Env = {
         // }
   
         // Send email via Mailgun
-        const formName = data._form || "contact";
-        const subject = `New ${formName} submission`;
-        const text = JSON.stringify(data, null, 2);
+        const subject = formConfig?.subject || `New ${formName} submission`;
+        
+        // Generate beautiful HTML email
+        const htmlContent = generateHtmlEmail(data, formName, formConfig);
+        const textContent = generateTextEmail(data, formName, formConfig);
+        
+        // Determine recipients
+        const recipients = formConfig?.notifyTo || [defaults.defaultNotifyTo];
+        const fromEmail = formConfig?.fromEmail || defaults.defaultFromEmail;
         
         console.log(`📧 Sending email via Mailgun:`);
-        console.log(`  From: ${env.FROM_EMAIL}`);
-        console.log(`  To: ${env.NOTIFY_TO}`);
+        console.log(`  From: ${fromEmail}`);
+        console.log(`  To: ${recipients.join(', ')}`);
         console.log(`  Subject: ${subject}`);
         console.log(`  Domain: ${env.MAILGUN_DOMAIN}`);
         
-        await sendWithMailgun(env, { to: env.NOTIFY_TO, from: env.FROM_EMAIL, subject, text });
-        console.log("✅ Email sent successfully via Mailgun");
+        // Send to all recipients
+        for (const recipient of recipients) {
+          await sendWithMailgun(env, { 
+            to: recipient, 
+            from: fromEmail, 
+            subject, 
+            html: htmlContent,
+            text: textContent
+          });
+          console.log(`✅ Email sent successfully to: ${recipient}`);
+        }
   
         // Redirect target:
-        // priority: explicit _redirect -> ?redirect= param -> default /thank-you
+        // priority: explicit _redirect -> form config thankYouUrl -> ?redirect= param -> default /thank-you
         const explicit = data._redirect;
+        const formThankYou = formConfig?.thankYouUrl;
         const qsRedirect = url.searchParams.get("redirect");
         const fallback = "/thank-you";
-        const target = explicit || qsRedirect || fallback;
+        const target = explicit || formThankYou || qsRedirect || fallback;
   
         const absolute = new URL(target, req.url).toString();
         console.log(`🔄 Redirecting to: ${absolute}`);
         
-        // Create a redirect response with CORS headers
+        // Always redirect for form submissions - simple and works everywhere
         const redirectResponse = new Response(null, {
           status: 303,
           headers: {
@@ -160,6 +226,35 @@ type Env = {
   
   // ===== helpers =====
   
+  function getFormConfigs(): Record<string, FormConfig> {
+    console.log("Loaded form configurations:", Object.keys(formConfigs));
+    return formConfigs as Record<string, FormConfig>;
+  }
+  
+  function getDefaultConfigs() {
+    return defaultConfigs;
+  }
+  
+  function getFormConfig(pathname: string): FormConfig | null {
+    const configs = getFormConfigs();
+    
+    // Extract form name from path like /ecofresh/submit -> ecofresh
+    const pathParts = pathname.split('/').filter(Boolean);
+    if (pathParts.length >= 2 && pathParts[1] === 'submit') {
+      const formName = pathParts[0];
+      const config = configs[formName];
+      
+      if (config) {
+        console.log(`Found form config for: ${formName}`);
+        return config;
+      } else {
+        console.log(`No config found for form: ${formName}`);
+      }
+    }
+    
+    return null;
+  }
+  
   async function parseBody(req: Request): Promise<Record<string, string>> {
     const ct = req.headers.get("content-type") || "";
     if (ct.includes("application/json")) return await req.json();
@@ -173,7 +268,207 @@ type Env = {
     return Object.fromEntries(new URLSearchParams(text));
   }
   
-  async function sendWithMailgun(env: Env, { to, from, subject, text }: { to: string; from: string; subject: string; text: string; }) {
+  function generateHtmlEmail(data: Record<string, string>, formName: string, formConfig: FormConfig | null): string {
+    const timestamp = new Date().toLocaleString();
+    const formDisplayName = formConfig?.name || formName;
+    
+    // Filter out system fields
+    const filteredData = Object.entries(data)
+      .filter(([key]) => !key.startsWith('_'))
+      .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {} as Record<string, string>);
+    
+    const fieldsHtml = Object.entries(filteredData)
+      .map(([key, value]) => `
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057; width: 150px;">
+            ${key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e9ecef; color: #212529;">
+            ${value.replace(/\n/g, '<br>')}
+          </td>
+        </tr>
+      `).join('');
+    
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${formDisplayName} Submission</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .email-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 8px 0 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .form-info {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 0 4px 4px 0;
+        }
+        .form-info h3 {
+            margin: 0 0 8px 0;
+            color: #007bff;
+            font-size: 16px;
+        }
+        .form-info p {
+            margin: 0;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .submission-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .submission-table th {
+            background: #f8f9fa;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .submission-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .submission-table tr:last-child td {
+            border-bottom: none;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+            border-top: 1px solid #dee2e6;
+        }
+        .timestamp {
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #495057;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .header, .content, .footer {
+                padding: 20px;
+            }
+            .submission-table {
+                font-size: 14px;
+            }
+            .submission-table th,
+            .submission-table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>📧 New Form Submission</h1>
+            <p>${formDisplayName}</p>
+        </div>
+        
+        <div class="content">
+            <div class="form-info">
+                <h3>Form Details</h3>
+                <p>You have received a new submission from your ${formDisplayName.toLowerCase()}.</p>
+            </div>
+            
+            <table class="submission-table">
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${fieldsHtml}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="footer">
+            <p>This email was automatically generated by your form handling system.</p>
+            <div class="timestamp">Received: ${timestamp}</div>
+        </div>
+    </div>
+</body>
+</html>`;
+  }
+  
+  function generateTextEmail(data: Record<string, string>, formName: string, formConfig: FormConfig | null): string {
+    const timestamp = new Date().toLocaleString();
+    const formDisplayName = formConfig?.name || formName;
+    
+    // Filter out system fields
+    const filteredData = Object.entries(data)
+      .filter(([key]) => !key.startsWith('_'))
+      .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {} as Record<string, string>);
+    
+    const fieldsText = Object.entries(filteredData)
+      .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}: ${value}`)
+      .join('\n');
+    
+    return `
+New Form Submission - ${formDisplayName}
+
+You have received a new submission from your ${formDisplayName.toLowerCase()}.
+
+${fieldsText}
+
+---
+This email was automatically generated by your form handling system.
+Received: ${timestamp}
+`;
+  }
+  
+  async function sendWithMailgun(env: Env, { to, from, subject, html, text }: { to: string; from: string; subject: string; html: string; text: string; }) {
     const url = `https://api.mailgun.net/v3/${env.MAILGUN_DOMAIN}/messages`;
     console.log(`📡 Making request to Mailgun API: ${url}`);
     
@@ -183,7 +478,13 @@ type Env = {
         Authorization: "Basic " + btoa("api:" + env.MAILGUN_API_KEY),
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({ from, to, subject, text }),
+      body: new URLSearchParams({ 
+        from, 
+        to, 
+        subject, 
+        html,
+        text 
+      }),
     });
     
     console.log(`📡 Mailgun API response: ${res.status} ${res.statusText}`);

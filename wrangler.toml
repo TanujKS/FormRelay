@@ -2,18 +2,17 @@ name = "form-relay"
 main = "src/worker.ts"
 compatibility_date = "2025-01-09"
 
-[observability.logs]
-enabled = true
-
-# Expose on your domain
-routes = [{ pattern = "forms.tanuj.xyz/*", zone_name = "tanuj.xyz" }]
+# Custom domain will be configured in Cloudflare Dashboard
+# Go to Workers & Pages → form-relay → Settings → Custom Domains
 
 # Environment variables (set these via wrangler secret put)
-# Required:
+# Required (sensitive information only):
 # - MAILGUN_API_KEY
 # - MAILGUN_DOMAIN (e.g., "mail.tanuj.xyz")
-# - NOTIFY_TO (email to receive form submissions)
-# - FROM_EMAIL (e.g., "forms@mail.tanuj.xyz")
+#
+# Form configurations are in repository files:
+# - config/forms.json (form-specific settings)
+# - config/defaults.json (default fallback settings)
 
 # Optional: bindings (currently commented out)
 # [[kv_namespaces]]
@@ -24,3 +23,6 @@ routes = [{ pattern = "forms.tanuj.xyz/*", zone_name = "tanuj.xyz" }]
 # binding = "FORMS_D1"
 # database_name = "forms"
 # database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+[observability.logs]
+enabled = true

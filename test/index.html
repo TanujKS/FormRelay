@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Form Tester</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .honeypot {
+            position: absolute;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 1px solid #bee5eb;
+        }
+        .config-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        .config-section h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .url-display {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            margin-top: 10px;
+            word-break: break-all;
+        }
+        .form-preview {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            border: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>🧪 Unified Form Tester</h1>
+        
+        <div class="info">
+            <strong>Test any form configuration:</strong> Select your environment and form type, then submit to test the configuration.
+        </div>
+        
+        <!-- Success/Error messages will appear here -->
+        <div id="message"></div>
+        
+        <div class="config-section">
+            <h3>Configuration</h3>
+            <div class="form-group">
+                <label for="environment">Environment</label>
+                <select id="environment">
+                    <option value="local">Local Development (localhost:8787)</option>
+                    <option value="production">Production (form-relay.tanujsiripurapu.workers.dev)</option>
+                    <option value="custom">Custom Domain (forms.tanuj.xyz)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="formType">Form Type</label>
+                <select id="formType">
+                    <option value="submit">Default Form (/submit)</option>
+                    <option value="ecofresh">EcoFresh Form (/ecofresh/submit)</option>
+                    <option value="contact">Contact Form (/contact/submit)</option>
+                    <option value="support">Support Form (/support/submit)</option>
+                    <option value="newsletter">Newsletter Form (/newsletter/submit)</option>
+                </select>
+            </div>
+            
+            <div class="url-display" id="urlDisplay">
+                Target URL: <span id="targetUrl">http://localhost:8787/submit</span>
+            </div>
+            
+            <div class="form-preview" id="formPreview">
+                <strong>Form Configuration:</strong><br>
+                <span id="formConfig">Using default settings</span>
+            </div>
+        </div>
+        
+        <form id="testForm" action="http://localhost:8787/submit" method="POST">
+            <div class="form-group">
+                <label for="name">Name *</label>
+                <input type="text" id="name" name="name" value="John Doe" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" value="john.doe@example.com" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="subject">Subject</label>
+                <input type="text" id="subject" name="subject" value="Test Form Submission">
+            </div>
+            
+            <div class="form-group">
+                <label for="message">Message *</label>
+                <textarea id="message" name="message" rows="5" required>This is a test message from the unified form tester. 
+
+I'm testing the form submission functionality to ensure everything is working correctly.
+
+Best regards,
+John Doe</textarea>
+            </div>
+            
+            <!-- Honeypot field - hidden from users -->
+            <input type="text" name="_hp" class="honeypot" tabindex="-1" autocomplete="off">
+            
+            <!-- Form identifier -->
+            <input type="hidden" name="_form" value="test">
+            
+            <button type="submit">Send Test Message</button>
+        </form>
+    </div>
+
+    <script>
+        // Form configurations (matching config/forms.json)
+        const formConfigs = {
+            submit: {
+                name: "Default Form",
+                description: "Using default settings from config/defaults.json"
+            },
+            ecofresh: {
+                name: "EcoFresh Contact Form",
+                description: "Notifies: tanuj@ecofreshdrycleaner.com<br>Subject: New EcoFresh Contact Form Submission<br>Thank you: /ecofresh/thank-you"
+            },
+            contact: {
+                name: "General Contact Form", 
+                description: "Notifies: tanujsiripurapu@gmail.com<br>From: forms@mail.tanuj.xyz<br>Subject: New Contact Form Submission<br>Thank you: /contact/thank-you"
+            },
+            support: {
+                name: "Support Request Form",
+                description: "Notifies: support@tanuj.xyz, admin@tanuj.xyz<br>From: support@mail.tanuj.xyz<br>Subject: New Support Request<br>Thank you: /support/thank-you"
+            },
+            newsletter: {
+                name: "Newsletter Signup",
+                description: "Notifies: marketing@tanuj.xyz<br>From: newsletter@mail.tanuj.xyz<br>Subject: New Newsletter Subscription<br>Thank you: /newsletter/thank-you"
+            }
+        };
+
+        // Environment configurations
+        const environments = {
+            local: {
+                baseUrl: "http://localhost:8787",
+                description: "Local development server"
+            },
+            production: {
+                baseUrl: "https://form-relay.tanujsiripurapu.workers.dev",
+                description: "Production Cloudflare Worker"
+            },
+            custom: {
+                baseUrl: "https://forms.tanuj.xyz",
+                description: "Custom domain (if configured)"
+            }
+        };
+
+        function updateUrl() {
+            const environment = document.getElementById('environment').value;
+            const formType = document.getElementById('formType').value;
+            
+            const env = environments[environment];
+            let url = env.baseUrl;
+            
+            if (formType !== 'submit') {
+                url += `/${formType}/submit`;
+            } else {
+                url += '/submit';
+            }
+            
+            document.getElementById('targetUrl').textContent = url;
+            document.getElementById('testForm').action = url;
+            
+            // Update form preview
+            const config = formConfigs[formType];
+            document.getElementById('formConfig').innerHTML = config.description;
+        }
+
+        function getSubmitUrl() {
+            const environment = document.getElementById('environment').value;
+            const formType = document.getElementById('formType').value;
+            
+            const env = environments[environment];
+            let url = env.baseUrl;
+            
+            if (formType !== 'submit') {
+                url += `/${formType}/submit`;
+            } else {
+                url += '/submit';
+            }
+            
+            return url;
+        }
+
+        // Update URL when selections change
+        document.getElementById('environment').addEventListener('change', updateUrl);
+        document.getElementById('formType').addEventListener('change', updateUrl);
+
+        // Initialize
+        updateUrl();
+
+        // Simple form submission - let the browser handle everything naturally
+        // No JavaScript needed! The form will submit normally and redirect automatically
+    </script>
+</body>
+</html>

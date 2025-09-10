@@ -1,0 +1,39 @@
+{
+  "ecofresh": {
+    "name": "EcoFresh Contact Form",
+    "notifyTo": [
+      "tanuj@ecofreshdrycleaner.com"
+    ],
+    "thankYouUrl": "/thank-you",
+    "subject": "New EcoFresh Contact Form Submission",
+    "enabled": true
+  },
+  "afp": {
+    "name": "Association of Family Psychiatrists Contact Form",
+    "notifyTo": [
+      "tanujsiripurapu@gmail.com"
+    ],
+    "thankYouUrl": "/thank-you",
+    "subject": "New Association of Family Psychiatrists Contact Form Submission",
+    "enabled": true
+  },
+  "tarotcardlady": {
+    "name": "Tarot Card Lady Contact Form",
+    "notifyTo": [
+      "tanuj@tarotcardlady.net"
+    ],
+    "thankYouUrl": "/thank-you",
+    "subject": "New Association of Family Psychiatrists Contact Form Submission",
+    "enabled": true
+  },
+  "contact": {
+    "name": "General Contact Form",
+    "notifyTo": [
+      "tanujsiripurapu@gmail.com"
+    ],
+    "fromEmail": "forms@mail.tanuj.xyz",
+    "thankYouUrl": "/contact/thank-you",
+    "subject": "New Contact Form Submission",
+    "enabled": true
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "ecofresh": {
+    "name": "EcoFresh Contact Form",
+    "notifyTo": [
+      "tanuj@ecofreshdrycleaner.com"
+    ],
+    "thankYouUrl": "/ecofresh/thank-you",
+    "fromEmail": "noreply@ecofresh.com",
+    "subject": "New EcoFresh Contact Form Submission",
+    "enabled": true
+  },
+  "contact": {
+    "name": "General Contact Form",
+    "notifyTo": [
+      "info@tanuj.xyz"
+    ],
+    "thankYouUrl": "/contact/thank-you",
+    "subject": "New Contact Form Submission",
+    "enabled": true
+  }
+}
