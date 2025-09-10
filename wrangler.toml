@@ -1,0 +1,23 @@
+name = "form-relay"
+main = "src/worker.ts"
+compatibility_date = "2025-01-09"
+
+# Expose on your domain
+routes = [{ pattern = "forms.tanuj.xyz/*", zone_name = "tanuj.xyz" }]
+
+# Environment variables (set these via wrangler secret put)
+# Required:
+# - MAILGUN_API_KEY
+# - MAILGUN_DOMAIN (e.g., "mail.tanuj.xyz")
+# - NOTIFY_TO (email to receive form submissions)
+# - FROM_EMAIL (e.g., "forms@mail.tanuj.xyz")
+
+# Optional: bindings (currently commented out)
+# [[kv_namespaces]]
+# binding = "RATE_KV"
+# id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# [[d1_databases]]
+# binding = "FORMS_D1"
+# database_name = "forms"
+# database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"

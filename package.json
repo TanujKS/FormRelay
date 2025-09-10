@@ -1,0 +1,28 @@
+{
+  "name": "form-relay",
+  "version": "1.0.0",
+  "description": "Self-hosted form handling Cloudflare Worker with Mailgun integration",
+  "main": "src/worker.ts",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "dev:remote": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:preview": "wrangler deploy --env preview",
+    "tail": "wrangler tail",
+    "secret:put": "wrangler secret put"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241218.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^4.35.0"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "form",
+    "mailgun",
+    "email"
+  ],
+  "author": "Tanuj",
+  "license": "MIT"
+}

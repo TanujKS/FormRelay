@@ -1,0 +1,14 @@
+# Environment variables
+.dev.vars*
+.env*
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+*.log
+
+# IDE
+.vscode/
+.idea/
