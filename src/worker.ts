@@ -33,62 +33,7 @@ type Env = {
         console.log("Handling CORS preflight request");
         return cors(new Response(null, { status: 204 }));
       }
-  
-      // Handle thank you pages for different forms
-      if (url.pathname === "/thank-you") {
-        console.log("Serving default thank you page");
-        return cors(new Response(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Thank You</title>
-            <style>
-              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-              .success { color: #28a745; font-size: 24px; margin-bottom: 20px; }
-            </style>
-          </head>
-          <body>
-            <div class="success">✅ Thank you! Your message has been sent successfully.</div>
-            <p>We'll get back to you soon.</p>
-          </body>
-          </html>
-        `, { 
-          status: 200,
-          headers: { "Content-Type": "text/html" }
-        }));
-      }
 
-      // Handle form-specific thank you pages
-      if (url.pathname.endsWith("/thank-you")) {
-        const formName = url.pathname.split("/")[1]; // Extract form name from /ecofresh/thank-you
-        console.log(`Serving thank you page for form: ${formName}`);
-        
-        const formConfigs = getFormConfigs();
-        const formConfig = formConfigs[formName];
-        const formDisplayName = formConfig?.name || formName;
-        
-        return cors(new Response(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>Thank You - ${formDisplayName}</title>
-            <style>
-              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-              .success { color: #28a745; font-size: 24px; margin-bottom: 20px; }
-              .form-name { color: #007bff; font-size: 18px; margin-bottom: 10px; }
-            </style>
-          </head>
-          <body>
-            <div class="form-name">${formDisplayName}</div>
-            <div class="success">✅ Thank you! Your message has been sent successfully.</div>
-            <p>We'll get back to you soon.</p>
-          </body>
-          </html>
-        `, { 
-          status: 200,
-          headers: { "Content-Type": "text/html" }
-        }));
-      }
 
       // Check if this is a form submission route (e.g., /submit, /ecofresh/submit, /contact/submit)
       const isFormRoute = url.pathname === "/submit" || 
@@ -196,7 +141,31 @@ type Env = {
         const fallback = "/thank-you";
         const target = explicit || formThankYou || qsRedirect || fallback;
   
-        const absolute = new URL(target, req.url).toString();
+        // Smart redirect logic: if thankYouUrl is relative, use requesting origin
+        let absolute;
+        if (formThankYou && formThankYou.startsWith('/') && !explicit) {
+          // Get the requesting origin from the Referer header
+          const referer = req.headers.get('referer');
+          if (referer) {
+            try {
+              const refererUrl = new URL(referer);
+              absolute = `${refererUrl.origin}${formThankYou}`;
+              console.log(`🔄 Smart redirect: Using requesting origin ${refererUrl.origin} + ${formThankYou}`);
+            } catch (e) {
+              // Fallback to current domain if referer is invalid
+              absolute = new URL(formThankYou, req.url).toString();
+              console.log(`🔄 Fallback redirect: Invalid referer, using current domain`);
+            }
+          } else {
+            // No referer, use current domain
+            absolute = new URL(formThankYou, req.url).toString();
+            console.log(`🔄 No referer: Using current domain for relative path`);
+          }
+        } else {
+          // Absolute URL or explicit redirect - use as-is
+          absolute = new URL(target, req.url).toString();
+        }
+        
         console.log(`🔄 Redirecting to: ${absolute}`);
         
         // Always redirect for form submissions - simple and works everywhere

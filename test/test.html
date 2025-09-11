@@ -143,10 +143,7 @@
                 <label for="formType">Form Type</label>
                 <select id="formType">
                     <option value="submit">Default Form (/submit)</option>
-                    <option value="ecofresh">EcoFresh Form (/ecofresh/submit)</option>
-                    <option value="contact">Contact Form (/contact/submit)</option>
-                    <option value="support">Support Form (/support/submit)</option>
-                    <option value="newsletter">Newsletter Form (/newsletter/submit)</option>
+                    <!-- Form options will be populated dynamically from config/forms.json -->
                 </select>
             </div>
             
@@ -197,27 +194,11 @@ John Doe</textarea>
     </div>
 
     <script>
-        // Form configurations (matching config/forms.json)
-        const formConfigs = {
+        // Form configurations - loaded dynamically from config/forms.json
+        let formConfigs = {
             submit: {
                 name: "Default Form",
                 description: "Using default settings from config/defaults.json"
-            },
-            ecofresh: {
-                name: "EcoFresh Contact Form",
-                description: "Notifies: tanuj@ecofreshdrycleaner.com<br>Subject: New EcoFresh Contact Form Submission<br>Thank you: /ecofresh/thank-you"
-            },
-            contact: {
-                name: "General Contact Form", 
-                description: "Notifies: tanujsiripurapu@gmail.com<br>From: forms@mail.tanuj.xyz<br>Subject: New Contact Form Submission<br>Thank you: /contact/thank-you"
-            },
-            support: {
-                name: "Support Request Form",
-                description: "Notifies: support@tanuj.xyz, admin@tanuj.xyz<br>From: support@mail.tanuj.xyz<br>Subject: New Support Request<br>Thank you: /support/thank-you"
-            },
-            newsletter: {
-                name: "Newsletter Signup",
-                description: "Notifies: marketing@tanuj.xyz<br>From: newsletter@mail.tanuj.xyz<br>Subject: New Newsletter Subscription<br>Thank you: /newsletter/thank-you"
             }
         };
 
@@ -278,8 +259,93 @@ John Doe</textarea>
         document.getElementById('environment').addEventListener('change', updateUrl);
         document.getElementById('formType').addEventListener('change', updateUrl);
 
+        // Load form configurations from config/forms.json
+        async function loadFormConfigs() {
+            try {
+                const response = await fetch('../config/forms.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const formsData = await response.json();
+                
+                // Convert forms.json data to our format
+                for (const [formKey, formConfig] of Object.entries(formsData)) {
+                    const recipients = Array.isArray(formConfig.notifyTo) 
+                        ? formConfig.notifyTo.join(', ') 
+                        : formConfig.notifyTo;
+                    
+                    let description = `Notifies: ${recipients}`;
+                    if (formConfig.fromEmail) {
+                        description += `<br>From: ${formConfig.fromEmail}`;
+                    }
+                    if (formConfig.subject) {
+                        description += `<br>Subject: ${formConfig.subject}`;
+                    }
+                    if (formConfig.thankYouUrl) {
+                        description += `<br>Thank you: ${formConfig.thankYouUrl}`;
+                    }
+                    
+                    formConfigs[formKey] = {
+                        name: formConfig.name,
+                        description: description
+                    };
+                }
+                
+                // Update the form type dropdown
+                updateFormTypeDropdown();
+                
+                console.log('Form configurations loaded:', formConfigs);
+            } catch (error) {
+                console.error('Error loading form configurations:', error);
+                // Fallback to hardcoded configs if loading fails
+                formConfigs = {
+                    submit: {
+                        name: "Default Form",
+                        description: "Using default settings from config/defaults.json"
+                    },
+                    ecofresh: {
+                        name: "EcoFresh Contact Form",
+                        description: "Notifies: tanuj@ecofreshdrycleaner.com<br>Subject: New EcoFresh Contact Form Submission<br>Thank you: /ecofresh/thank-you"
+                    },
+                    contact: {
+                        name: "General Contact Form", 
+                        description: "Notifies: tanujsiripurapu@gmail.com<br>From: forms@mail.tanuj.xyz<br>Subject: New Contact Form Submission<br>Thank you: /contact/thank-you"
+                    }
+                };
+                updateFormTypeDropdown();
+            }
+        }
+        
+        function updateFormTypeDropdown() {
+            const formTypeSelect = document.getElementById('formType');
+            const currentValue = formTypeSelect.value;
+            
+            // Clear existing options except the first one
+            formTypeSelect.innerHTML = '<option value="submit">Default Form (/submit)</option>';
+            
+            // Add options for each form configuration
+            for (const [formKey, formConfig] of Object.entries(formConfigs)) {
+                if (formKey !== 'submit') {
+                    const option = document.createElement('option');
+                    option.value = formKey;
+                    option.textContent = `${formConfig.name} (/${formKey}/submit)`;
+                    formTypeSelect.appendChild(option);
+                }
+            }
+            
+            // Restore previous selection if it still exists
+            if (formConfigs[currentValue]) {
+                formTypeSelect.value = currentValue;
+            }
+            
+            // Update the form preview
+            updateUrl();
+        }
+
         // Initialize
-        updateUrl();
+        loadFormConfigs().then(() => {
+            updateUrl();
+        });
 
         // Simple form submission - let the browser handle everything naturally
         // No JavaScript needed! The form will submit normally and redirect automatically

@@ -2,7 +2,8 @@
   "ecofresh": {
     "name": "EcoFresh Contact Form",
     "notifyTo": [
-      "tanuj@ecofreshdrycleaner.com"
+      "tanuj@ecofreshdrycleaner.com",
+      "navin@ecofreshdrycleaner.com"
     ],
     "thankYouUrl": "/thank-you",
     "subject": "New EcoFresh Contact Form Submission",
@@ -20,10 +21,21 @@
   "tarotcardlady": {
     "name": "Tarot Card Lady Contact Form",
     "notifyTo": [
-      "tanuj@tarotcardlady.net"
+      "tanuj@tarotcardlady.net",
+      "christine@tarotcardlady.net"
     ],
     "thankYouUrl": "/thank-you",
-    "subject": "New Association of Family Psychiatrists Contact Form Submission",
+    "subject": "New TarotCardLady Contact Form Submission",
+    "enabled": true
+  },
+  "thedraperylady": {
+    "name": "TheDraperyLady Contact Form",
+    "notifyTo": [
+      "tanuj@draperylady.net",
+      "christine@draperylady.net"
+    ],
+    "thankYouUrl": "/thank-you",
+    "subject": "New TheDraperyLady Contact Form Submission",
     "enabled": true
   },
   "contact": {
@@ -32,7 +44,7 @@
       "tanujsiripurapu@gmail.com"
     ],
     "fromEmail": "forms@mail.tanuj.xyz",
-    "thankYouUrl": "/contact/thank-you",
+    "thankYouUrl": "/thank-you",
     "subject": "New Contact Form Submission",
     "enabled": true
   }

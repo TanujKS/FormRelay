@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You - Message Sent Successfully</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background: #ffffff;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        line-height: 1.6;
+        color: #333;
+      }
+      
+      .container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        padding: 60px 40px;
+        text-align: center;
+        max-width: 500px;
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #28a745, #20c997, #17a2b8);
+      }
+      
+      .success-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #28a745, #20c997);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 30px;
+        animation: pulse 2s infinite;
+      }
+      
+      .success-icon::before {
+        content: '✓';
+        color: white;
+        font-size: 36px;
+        font-weight: bold;
+      }
+      
+      @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+      }
+      
+      h1 {
+        color: #2c3e50;
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        background: linear-gradient(135deg, #2c3e50, #3498db);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      
+      .message {
+        color: #28a745;
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        line-height: 1.4;
+      }
+      
+      .sub-message {
+        color: #6c757d;
+        font-size: 16px;
+        margin-bottom: 30px;
+        line-height: 1.5;
+      }
+      
+      .features {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 24px;
+        margin: 30px 0;
+        text-align: left;
+      }
+      
+      .features h3 {
+        color: #495057;
+        font-size: 18px;
+        margin-bottom: 16px;
+        text-align: center;
+      }
+      
+      .feature-list {
+        list-style: none;
+        padding: 0;
+      }
+      
+      .feature-list li {
+        color: #6c757d;
+        font-size: 14px;
+        margin-bottom: 8px;
+        padding-left: 24px;
+        position: relative;
+      }
+      
+      .feature-list li::before {
+        content: '•';
+        color: #28a745;
+        font-weight: bold;
+        position: absolute;
+        left: 0;
+      }
+      
+      .cta-button {
+        display: inline-block;
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: white;
+        text-decoration: none;
+        padding: 14px 28px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+      }
+      
+      .cta-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+        text-decoration: none;
+        color: white;
+      }
+      
+      .footer {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid #e9ecef;
+        color: #6c757d;
+        font-size: 14px;
+      }
+      
+      .timestamp {
+        background: #e9ecef;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 12px;
+        color: #495057;
+        display: inline-block;
+        margin-top: 16px;
+      }
+      
+      @media (max-width: 600px) {
+        .container {
+          padding: 40px 24px;
+          margin: 10px;
+        }
+        
+        h1 {
+          font-size: 28px;
+        }
+        
+        .message {
+          font-size: 18px;
+        }
+        
+        .success-icon {
+          width: 60px;
+          height: 60px;
+        }
+        
+        .success-icon::before {
+          font-size: 28px;
+        }
+      }
+    </style>
+</head>
+<body>
+    <div class="container">
+      <div class="success-icon"></div>
+      
+      <h1>Thank You!</h1>
+      <div class="message">Your message has been sent successfully</div>
+      <div class="sub-message">We've received your submission and will get back to you as soon as possible.</div>
+      
+      <div class="features">
+        <h3>What happens next?</h3>
+        <ul class="feature-list">
+          <li>Your message has been delivered to our team</li>
+          <li>We'll review your submission within 24 hours</li>
+          <li>You'll receive a response via email</li>
+          <li>We're here to help with any questions</li>
+        </ul>
+      </div>
+      
+      <a href="javascript:history.back()" class="cta-button">← Go Back</a>
+      
+      <div class="footer">
+        <p>This confirmation was generated automatically by our form system.</p>
+        <div class="timestamp">Submitted: <span id="timestamp"></span></div>
+      </div>
+    </div>
+
+    <script>
+      // Set the current timestamp
+      document.getElementById('timestamp').textContent = new Date().toLocaleString();
+    </script>
+</body>
+</html>
