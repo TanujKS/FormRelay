@@ -7,9 +7,10 @@ A powerful Cloudflare Worker that handles HTML form submissions and forwards the
 - ✅ **Mailgun email integration** - Reliable email delivery
 - ✅ **CORS support** - Works with JavaScript clients
 - ✅ **Honeypot protection** - Built-in bot protection
-- ✅ **Multiple forms** - Support for different form types with custom configurations
+- ✅ **Multiple forms** - Support for different form types with file-based configuration
 - ✅ **Multiple recipients** - Send emails to different addresses per form
 - ✅ **Custom redirects** - Custom thank you pages per form
+- ✅ **File-based configuration** - Easy form management through JSON files
 - ✅ **Rate limiting** - Optional IP-based rate limiting (KV storage)
 - ✅ **Turnstile verification** - Optional Cloudflare Turnstile integration
 - ✅ **D1 database storage** - Optional form submission storage
@@ -36,7 +37,34 @@ npm install
 3. Get your API key from Settings > API Keys
 4. Verify your domain in Mailgun
 
-### 3. Set Environment Variables
+### 3. Configure Form Settings
+
+The worker uses file-based configuration instead of environment variables for form settings:
+
+1. **Edit `config/defaults.json`** - Set default settings:
+```json
+{
+  "defaultNotifyTo": "your-email@example.com",
+  "defaultFromEmail": "forms@mail.yourdomain.com",
+  "defaultThankYouUrl": "/thank-you"
+}
+```
+
+2. **Edit `config/forms.json`** - Configure individual forms:
+```json
+{
+  "contact": {
+    "name": "Contact Form",
+    "notifyTo": ["your-email@example.com"],
+    "fromEmail": "forms@mail.yourdomain.com",
+    "thankYouUrl": "/thank-you",
+    "subject": "New Contact Form Submission",
+    "enabled": true
+  }
+}
+```
+
+### 4. Set Required Environment Variables
 
 Set the required secrets using Wrangler:
 
@@ -46,15 +74,9 @@ wrangler secret put MAILGUN_API_KEY
 
 # Your Mailgun domain (e.g., "mail.yourdomain.com")
 wrangler secret put MAILGUN_DOMAIN
-
-# Email address to receive form submissions
-wrangler secret put NOTIFY_TO
-
-# From email address (e.g., "forms@mail.yourdomain.com")
-wrangler secret put FROM_EMAIL
 ```
 
-### 4. Deploy
+### 5. Deploy
 
 ```bash
 # Deploy to production
@@ -81,50 +103,11 @@ npm run deploy:preview
 </form>
 ```
 
-### Form with Custom Redirect
 
-```html
-<form action="https://your-worker.workers.dev/submit?redirect=/thank-you" method="POST">
-  <input type="text" name="name" placeholder="Your Name" required>
-  <input type="email" name="email" placeholder="Your Email" required>
-  <textarea name="message" placeholder="Your Message" required></textarea>
-  
-  <!-- Form identifier -->
-  <input type="hidden" name="_form" value="contact">
-  
-  <!-- Custom redirect (overrides query param) -->
-  <input type="hidden" name="_redirect" value="/custom-thank-you">
-  
-  <button type="submit">Send Message</button>
-</form>
-```
 
-### JavaScript Form Submission
+## Form Configuration
 
-```javascript
-const formData = new FormData();
-formData.append('name', 'John Doe');
-formData.append('email', 'john@example.com');
-formData.append('message', 'Hello from JavaScript!');
-formData.append('_form', 'contact');
-
-fetch('https://your-worker.workers.dev/submit', {
-  method: 'POST',
-  body: formData
-})
-.then(response => {
-  if (response.ok) {
-    console.log('Form submitted successfully');
-  }
-})
-.catch(error => {
-  console.error('Error:', error);
-});
-```
-
-## Advanced: Multiple Forms Configuration
-
-The worker supports multiple forms with different configurations, routes, and notification settings.
+The worker supports multiple forms with different configurations through file-based settings.
 
 ### URL Structure
 
@@ -132,9 +115,9 @@ The worker supports multiple forms with different configurations, routes, and no
 - **Named forms**: `https://your-worker.workers.dev/{form-name}/submit`
 
 ### Examples
-- `https://your-worker.workers.dev/ecofresh/submit`
 - `https://your-worker.workers.dev/contact/submit`
 - `https://your-worker.workers.dev/support/submit`
+- `https://your-worker.workers.dev/newsletter/submit`
 
 ### Configuration Schema
 
@@ -142,120 +125,23 @@ The worker supports multiple forms with different configurations, routes, and no
 type FormConfig = {
   name: string;           // Display name for the form
   notifyTo: string[];     // Array of email addresses to notify
-  fromEmail: string;      // From email address
+  fromEmail?: string;     // From email address (uses default if not specified)
   thankYouUrl?: string;   // Custom thank you page URL
   subject?: string;       // Custom email subject
   enabled?: boolean;      // Enable/disable the form (default: true)
 }
 ```
 
-### Example Configuration
-
-Set the `FORM_CONFIGS` environment variable as a JSON string:
-
-```bash
-wrangler secret put FORM_CONFIGS
-```
-
-Paste this JSON configuration:
-
-```json
-{
-  "ecofresh": {
-    "name": "EcoFresh Contact Form",
-    "notifyTo": [
-      "sales@ecofresh.com",
-      "support@ecofresh.com"
-    ],
-    "fromEmail": "noreply@ecofresh.com",
-    "thankYouUrl": "/ecofresh/thank-you",
-    "subject": "New EcoFresh Contact Form Submission",
-    "enabled": true
-  },
-  "contact": {
-    "name": "General Contact Form",
-    "notifyTo": [
-      "info@yourdomain.com"
-    ],
-    "fromEmail": "forms@mail.yourdomain.com",
-    "thankYouUrl": "/contact/thank-you",
-    "subject": "New Contact Form Submission",
-    "enabled": true
-  }
-}
-```
-
-### Multi-Form Usage Examples
-
-#### HTML Forms
-
-```html
-<!-- EcoFresh form -->
-<form action="https://your-worker.workers.dev/ecofresh/submit" method="POST">
-  <input type="text" name="name" required>
-  <input type="email" name="email" required>
-  <textarea name="message" required></textarea>
-  <input type="hidden" name="_form" value="ecofresh">
-  <button type="submit">Send to EcoFresh</button>
-</form>
-
-<!-- General contact form -->
-<form action="https://your-worker.workers.dev/contact/submit" method="POST">
-  <input type="text" name="name" required>
-  <input type="email" name="email" required>
-  <textarea name="message" required></textarea>
-  <input type="hidden" name="_form" value="contact">
-  <button type="submit">Send Message</button>
-</form>
-```
-
-#### JavaScript Fetch
-
-```javascript
-// EcoFresh form submission
-const ecofreshData = new FormData();
-ecofreshData.append('name', 'John Doe');
-ecofreshData.append('email', 'john@example.com');
-ecofreshData.append('message', 'Interested in EcoFresh products');
-
-fetch('https://your-worker.workers.dev/ecofresh/submit', {
-  method: 'POST',
-  body: ecofreshData
-});
-
-// General contact form submission
-const contactData = new FormData();
-contactData.append('name', 'Jane Smith');
-contactData.append('email', 'jane@example.com');
-contactData.append('message', 'General inquiry');
-
-fetch('https://your-worker.workers.dev/contact/submit', {
-  method: 'POST',
-  body: contactData
-});
-```
-
-### Multi-Form Features
-
-- ✅ **Multiple Forms** - Each form can have its own route (`/form-name/submit`)
-- ✅ **Multiple Recipients** - Send emails to multiple addresses per form
-- ✅ **Custom Email Settings** - Custom from email and subject lines per form
-- ✅ **Custom Thank You Pages** - Each form can redirect to its own thank you page
-- ✅ **Form Enable/Disable** - Enable or disable individual forms
-- ✅ **Fallback Support** - Backward compatible with existing single-form setup
-
 ### Fallback Behavior
 
-If a form route doesn't have a specific configuration:
+If a form doesn't have specific configuration:
 
-1. **Recipients**: Uses `NOTIFY_TO` environment variable
-2. **From Email**: Uses `FROM_EMAIL` environment variable  
+1. **Recipients**: Uses `defaultNotifyTo` from `config/defaults.json`
+2. **From Email**: Uses `defaultFromEmail` from `config/defaults.json`  
 3. **Subject**: Uses `"New {form-name} submission"`
-4. **Thank You**: Uses `/thank-you` or form's `_redirect` field
+4. **Thank You**: Uses `defaultThankYouUrl` from `config/defaults.json` or form's `_redirect` field
 
 ## Local Testing
-
-### Quick Start
 
 1. **Install dependencies:**
    ```bash
@@ -263,8 +149,8 @@ If a form route doesn't have a specific configuration:
    ```
 
 2. **Set up environment variables:**
-   - Edit `.dev.vars` file with your actual Mailgun credentials
-   - Replace the placeholder values with your real API key, domain, etc.
+   - Edit `.dev.vars` file with your Mailgun credentials
+   - Add your API key and domain
 
 3. **Start the development server:**
    ```bash
@@ -272,96 +158,9 @@ If a form route doesn't have a specific configuration:
    ```
 
 4. **Test the form:**
-   - Open `test/index.html` in your browser
+   - Open `test/test.html` in your browser
    - Fill out and submit the form
    - Check your email for the submission
-
-### Testing Options
-
-#### Option 1: Local Development (Recommended)
-```bash
-npm run dev
-```
-- Runs on `http://localhost:8787`
-- Uses local environment variables from `.dev.vars`
-- Faster iteration and debugging
-- No network calls to Cloudflare
-
-#### Option 2: Remote Development
-```bash
-npm run dev:remote
-```
-- Runs on Cloudflare's edge network
-- Uses actual Cloudflare environment
-- Better for testing real-world conditions
-- Requires setting up secrets with `wrangler secret put`
-
-### Testing Steps
-
-#### 1. Basic Form Submission Test
-
-1. Start the dev server:
-   ```bash
-   npm run dev
-   ```
-
-2. Open `test/index.html` in your browser
-
-3. Fill out the form with test data:
-   - Name: "Test User"
-   - Email: "test@example.com"
-   - Subject: "Local Test"
-   - Message: "This is a test message from local development"
-
-4. Submit the form
-
-5. Check the console output in your terminal for logs
-
-6. Check your email for the form submission
-
-#### 2. Testing Different Scenarios
-
-**Test Honeypot Protection:**
-- Fill out the form normally (should work)
-- Try to fill the hidden `_hp` field (should be ignored)
-
-**Test Form Redirects:**
-- Add `?redirect=/custom-page` to the form action
-- Or add a hidden field: `<input type="hidden" name="_redirect" value="/thank-you">`
-
-**Test Different Form Types:**
-- Change the `_form` hidden field value to test different form identifiers
-
-#### 3. Testing with cURL
-
-You can also test the API directly with cURL:
-
-```bash
-# Basic form submission
-curl -X POST http://localhost:8787/submit \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "name=Test User&email=test@example.com&message=Test message&_form=curl-test"
-
-# JSON submission
-curl -X POST http://localhost:8787/submit \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test User","email":"test@example.com","message":"Test message","_form":"json-test"}'
-```
-
-#### 4. Testing Error Handling
-
-```bash
-# Wrong method
-curl -X GET http://localhost:8787/submit
-
-# Wrong path
-curl -X POST http://localhost:8787/wrong-path
-
-# Missing required fields (if you add validation)
-curl -X POST http://localhost:8787/submit \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "name=Test User"
-```
 
 ### Environment Variables for Testing
 
@@ -370,8 +169,6 @@ Make sure your `.dev.vars` file contains:
 ```bash
 MAILGUN_API_KEY=key-your-actual-mailgun-api-key
 MAILGUN_DOMAIN=mail.yourdomain.com
-NOTIFY_TO=your-email@example.com
-FROM_EMAIL=forms@mail.yourdomain.com
 ```
 
 ## Optional Features
@@ -403,11 +200,46 @@ database_name = "forms"
 database_id = "your-database-id"
 ```
 
-## Form Parameters
+### Form Parameters
 
 - `_form`: Form identifier (default: "contact")
 - `_redirect`: Custom redirect URL after submission
 - `_hp`: Honeypot field (leave empty, hidden from users)
+
+## Configuration Files
+
+The worker uses two configuration files:
+
+### `config/defaults.json`
+Contains default settings used as fallbacks:
+```json
+{
+  "defaultNotifyTo": "your-email@example.com",
+  "defaultFromEmail": "forms@mail.yourdomain.com",
+  "defaultThankYouUrl": "/thank-you"
+}
+```
+
+### `config/forms.json`
+Contains individual form configurations:
+```json
+{
+  "contact": {
+    "name": "Contact Form",
+    "notifyTo": ["your-email@example.com"],
+    "fromEmail": "forms@mail.yourdomain.com",
+    "thankYouUrl": "/thank-you",
+    "subject": "New Contact Form Submission",
+    "enabled": true
+  },
+  "support": {
+    "name": "Support Form",
+    "notifyTo": ["support@yourdomain.com"],
+    "subject": "New Support Request",
+    "enabled": true
+  }
+}
+```
 
 ## Email Format
 
@@ -432,15 +264,14 @@ wrangler tail
 
 Example log output:
 ```
-[2025-01-09T23:30:00.000Z] POST /ecofresh/submit - IP: 192.168.1.1
-Found form config for: ecofresh
+[2025-01-09T23:30:00.000Z] POST /contact/submit - IP: 192.168.1.1
+Found form config for: contact
 📧 Sending email via Mailgun:
-  From: noreply@ecofresh.com
-  To: sales@ecofresh.com, support@ecofresh.com
-  Subject: New EcoFresh Contact Form Submission
-✅ Email sent successfully to: sales@ecofresh.com
-✅ Email sent successfully to: support@ecofresh.com
-🔄 Redirecting to: /ecofresh/thank-you
+  From: forms@mail.yourdomain.com
+  To: your-email@example.com
+  Subject: New Contact Form Submission
+✅ Email sent successfully to: your-email@example.com
+🔄 Redirecting to: /thank-you
 ```
 
 ## Debugging
@@ -476,7 +307,7 @@ In your browser's developer tools:
 
 **Email Not Received:**
 - Check spam folder
-- Verify the `NOTIFY_TO` email address
+- Verify the email addresses in `config/defaults.json` or `config/forms.json`
 - Check Mailgun logs in your dashboard
 
 **Form Not Working:**
@@ -486,8 +317,8 @@ In your browser's developer tools:
 
 **Emails Not Sending:**
 - Verify Mailgun configuration
-- Check recipient email addresses
-- Ensure form configuration is valid JSON
+- Check recipient email addresses in `config/forms.json` and `config/defaults.json`
+- Ensure form configuration files contain valid JSON
 
 **Wrong Redirect:**
 - Check `thankYouUrl` in form configuration
@@ -503,9 +334,7 @@ Before deploying to production:
    ```bash
    wrangler secret put MAILGUN_API_KEY
    wrangler secret put MAILGUN_DOMAIN
-   wrangler secret put NOTIFY_TO
-   wrangler secret put FROM_EMAIL
-   wrangler secret put FORM_CONFIGS  # If using multi-form setup
+   # Form configurations are now in config/forms.json and config/defaults.json
    ```
 3. Deploy to a preview environment first:
    ```bash

@@ -4,8 +4,7 @@
   "description": "Self-hosted form handling Cloudflare Worker with Mailgun integration",
   "main": "src/worker.ts",
   "scripts": {
-    "dev": "wrangler dev --local",
-    "dev:remote": "wrangler dev",
+    "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "deploy:preview": "wrangler deploy --env preview",
     "tail": "wrangler tail",
