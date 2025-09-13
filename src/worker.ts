@@ -105,7 +105,18 @@ type Env = {
         // }
   
         // Send email via Mailgun
-        const subject = formConfig?.subject || `New ${formName} submission`;
+        const baseSubject = formConfig?.subject || `New ${formName} submission`;
+        
+        // Add dynamic content to make each subject unique
+        let dynamicSubject = baseSubject;
+        
+        // Optionally add form data if available (like name or email)
+        const nameField = data.name || data.fullName || data.firstName || data.email;
+        if (nameField && !nameField.startsWith('_')) {
+          dynamicSubject = `${baseSubject} from ${nameField}`;
+        }
+        
+        const subject = dynamicSubject;
         
         // Generate beautiful HTML email
         const htmlContent = generateHtmlEmail(data, formName, formConfig);

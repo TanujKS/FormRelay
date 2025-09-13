@@ -6,7 +6,7 @@
       "navin@ecofreshdrycleaner.com"
     ],
     "thankYouUrl": "/thank-you",
-    "subject": "New EcoFresh Contact Form Submission",
+    "subject": "EcoFresh Contact Form Submission",
     "enabled": true
   },
   "afp": {
@@ -15,7 +15,7 @@
       "tanujsiripurapu@gmail.com"
     ],
     "thankYouUrl": "/thank-you",
-    "subject": "New Association of Family Psychiatrists Contact Form Submission",
+    "subject": "AFP Contact Form Submission",
     "enabled": true
   },
   "tarotcardlady": {
