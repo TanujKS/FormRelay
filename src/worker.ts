@@ -254,7 +254,7 @@ type Env = {
     
     // Filter out system fields
     const filteredData = Object.entries(data)
-      .filter(([key]) => !key.startsWith('_'))
+      .filter(([key]) => !key.startsWith('_') && key !== 'g-recaptcha-response')
       .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {} as Record<string, string>);
     
     const fieldsHtml = Object.entries(filteredData)
@@ -428,7 +428,7 @@ type Env = {
     
     // Filter out system fields
     const filteredData = Object.entries(data)
-      .filter(([key]) => !key.startsWith('_'))
+      .filter(([key]) => !key.startsWith('_') && key !== 'g-recaptcha-response')
       .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {} as Record<string, string>);
     
     const fieldsText = Object.entries(filteredData)

@@ -38,6 +38,15 @@
     "subject": "New TheDraperyLady Contact Form Submission",
     "enabled": true
   },
+  "ucm": {
+    "name": "UCM Contact Form",
+    "notifyTo": [
+      "ucm@tanuj.xyz"
+    ],
+    "thankYouUrl": "/thank-you",
+    "subject": "New UCM Contact Form Submission",
+    "enabled": true
+  },
   "contact": {
     "name": "General Contact Form",
     "notifyTo": [
