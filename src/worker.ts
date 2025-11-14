@@ -248,6 +248,16 @@ type Env = {
     return Object.fromEntries(new URLSearchParams(text));
   }
   
+  function prettifyFieldName(key: string): string {
+    return key
+      .replace(/-/g, ' ')  // Replace hyphens with spaces
+      .replace(/([A-Z])/g, ' $1')  // Add spaces before capital letters (camelCase)
+      .trim()
+      .split(/\s+/)  // Split by one or more spaces
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())  // Capitalize each word
+      .join(' ');
+  }
+  
   function generateHtmlEmail(data: Record<string, string>, formName: string, formConfig: FormConfig | null): string {
     const timestamp = new Date().toLocaleString();
     const formDisplayName = formConfig?.name || formName;
@@ -261,7 +271,7 @@ type Env = {
       .map(([key, value]) => `
         <tr>
           <td style="padding: 12px; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057; width: 150px;">
-            ${key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
+            ${prettifyFieldName(key)}
           </td>
           <td style="padding: 12px; border-bottom: 1px solid #e9ecef; color: #212529;">
             ${value.replace(/\n/g, '<br>')}
@@ -432,7 +442,7 @@ type Env = {
       .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {} as Record<string, string>);
     
     const fieldsText = Object.entries(filteredData)
-      .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}: ${value}`)
+      .map(([key, value]) => `${prettifyFieldName(key)}: ${value}`)
       .join('\n');
     
     return `
