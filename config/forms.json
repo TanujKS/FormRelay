@@ -47,6 +47,25 @@
     "subject": "New UCM Contact Form Submission",
     "enabled": true
   },
+  "ucm-applications": {
+    "name": "UCM Application Form",
+    "notifyTo": [
+      "ucm@tanuj.xyz"
+    ],
+    "thankYouUrl": "/thank-you",
+    "subject": "New UCM Application Form Submission",
+    "enabled": true
+  },
+  "blabbermouth": {
+    "name": "Blabbermouth Studio Contact Form",
+    "notifyTo": [
+      "blabbermouth@tanuj.xyz",
+      "rylinastanton@gmail.com"
+    ],
+    "thankYouUrl": "/thank-you",
+    "subject": "New Blabbermouth Contact Form Submission",
+    "enabled": true
+  },
   "contact": {
     "name": "General Contact Form",
     "notifyTo": [
