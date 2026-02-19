@@ -66,6 +66,15 @@
     "subject": "New Blabbermouth Contact Form Submission",
     "enabled": true
   },
+  "vivis-lasagna": {
+    "name": "Vivi's Lasagna Order",
+    "notifyTo": [
+      "tanujsiripurapu@gmail.com"
+    ],
+    "thankYouUrl": "/",
+    "subject": "New Vivi's Lasagna Order",
+    "enabled": true
+  },
   "contact": {
     "name": "General Contact Form",
     "notifyTo": [

@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vivi's Lasagna — Order Menu</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #faf7f2;
+      color: #2d2418;
+      line-height: 1.5;
+      padding: 24px 16px 40px;
+    }
+
+    .banner {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .banner h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #8b2c0d;
+      letter-spacing: -0.5px;
+    }
+    .banner p {
+      color: #7a6a56;
+      font-size: 0.95rem;
+      margin-top: 4px;
+    }
+
+    /* ---------- menu grid ---------- */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 18px;
+      margin-bottom: 32px;
+    }
+
+    .menu-card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+      transition: box-shadow .2s, transform .2s;
+      position: relative;
+    }
+    .menu-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,.12); }
+
+    .menu-card .card-top {
+      cursor: pointer;
+      position: relative;
+    }
+
+    .menu-card img {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .menu-card .card-body { padding: 12px 14px 10px; }
+    .menu-card .card-body h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #3a2b1a;
+      margin-bottom: 2px;
+    }
+    .menu-card .card-body .starting {
+      font-size: 0.82rem;
+      color: #8b2c0d;
+      font-weight: 600;
+    }
+    .menu-card .card-body .desc {
+      font-size: 0.8rem;
+      color: #8a7b6b;
+      margin-top: 3px;
+    }
+    .menu-card .card-body .tap-hint {
+      font-size: 0.72rem;
+      color: #b5a899;
+      margin-top: 6px;
+      transition: opacity .2s;
+    }
+    .menu-card.open .card-body .tap-hint { opacity: 0; height: 0; margin: 0; overflow: hidden; }
+
+    .check-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #8b2c0d;
+      color: #fff;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+      z-index: 2;
+    }
+    .menu-card.selected .check-badge { display: flex; }
+    .menu-card.selected { outline: 2px solid #8b2c0d; }
+
+    /* ---------- size panel (collapsed by default) ---------- */
+    .size-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .35s ease, padding .25s ease;
+      background: #fdf9f4;
+      border-top: 1px solid #f0e8dd;
+    }
+    .menu-card.open .size-panel {
+      max-height: 400px;
+      padding: 10px 14px 14px;
+    }
+
+    .size-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .size-table th {
+      text-align: left;
+      font-weight: 600;
+      color: #7a6a56;
+      padding: 4px 6px 6px;
+      border-bottom: 1px solid #e8dfd3;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .size-table th:nth-child(2),
+    .size-table th:nth-child(3) { text-align: center; }
+    .size-table td {
+      padding: 7px 6px;
+      border-bottom: 1px solid #f0e8dd;
+      color: #3a2b1a;
+    }
+    .size-table td:nth-child(2) {
+      text-align: center;
+      font-weight: 600;
+      color: #8b2c0d;
+      white-space: nowrap;
+    }
+    .size-table td:nth-child(3) { text-align: center; }
+    .size-table tr:last-child td { border-bottom: none; }
+
+    .size-table input[type="number"] {
+      width: 52px;
+      padding: 4px 4px;
+      border: 1px solid #d6cfc4;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      text-align: center;
+      background: #fff;
+    }
+    .size-table input[type="number"]:focus { outline: none; border-color: #8b2c0d; }
+
+    .subtotal-row {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 2px solid #e8dfd3;
+      font-size: 0.88rem;
+    }
+    .subtotal-row .lbl { color: #7a6a56; font-weight: 500; }
+    .subtotal-row .amt { color: #8b2c0d; font-weight: 700; font-size: 0.95rem; }
+
+    /* ---------- form sections ---------- */
+    .section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+    .section h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #8b2c0d;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #f0e8dd;
+    }
+
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #5a4d3e;
+      margin-bottom: 4px;
+    }
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d6cfc4;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      background: #faf7f2;
+      color: #2d2418;
+      transition: border-color .2s;
+    }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      outline: none;
+      border-color: #8b2c0d;
+      box-shadow: 0 0 0 3px rgba(139,44,13,.1);
+    }
+    .field textarea { resize: vertical; min-height: 70px; }
+
+    .radio-group { display: flex; flex-wrap: wrap; gap: 10px; }
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      background: #faf7f2;
+      border: 1px solid #d6cfc4;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      font-weight: 400;
+      transition: border-color .2s, background .2s;
+    }
+    .radio-group label:has(input:checked) {
+      border-color: #8b2c0d;
+      background: #fdf2ec;
+    }
+    .radio-group input[type="radio"] { accent-color: #8b2c0d; }
+
+    /* ---------- submit ---------- */
+    .submit-row { text-align: center; margin-top: 8px; }
+    .submit-btn {
+      background: linear-gradient(135deg, #8b2c0d, #a83a17);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 14px 48px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .2s;
+      box-shadow: 0 4px 14px rgba(139,44,13,.3);
+    }
+    .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(139,44,13,.4); }
+    .submit-btn:active { transform: translateY(0); }
+    .submit-btn:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ---------- success overlay ---------- */
+    .success-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(250,247,242,.92);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .success-overlay.show { display: flex; }
+    .success-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 48px 40px;
+      text-align: center;
+      box-shadow: 0 12px 40px rgba(0,0,0,.12);
+      max-width: 420px;
+    }
+    .success-box .icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #28a745, #20c997);
+      border-radius: 50%;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: #fff;
+    }
+    .success-box h2 { font-size: 1.4rem; color: #2d2418; margin-bottom: 8px; }
+    .success-box p { color: #7a6a56; font-size: 0.95rem; }
+    .success-box .reset-btn {
+      margin-top: 20px;
+      background: #8b2c0d;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 28px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* honeypot */
+    .hp-field { position: absolute; left: -9999px; opacity: 0; height: 0; }
+
+    @media (max-width: 600px) {
+      body { padding: 16px 10px 32px; }
+      .menu-grid { grid-template-columns: 1fr; gap: 14px; }
+      .menu-card img { height: 140px; }
+      .section { padding: 18px 16px; }
+      .banner h1 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="banner">
+  <h1>Vivi's Lasagna</h1>
+  <p>Tap an item to pick sizes &amp; quantities, then check out below.</p>
+</div>
+
+<form id="orderForm" method="POST">
+  <div class="hp-field">
+    <input type="text" name="_hp" tabindex="-1" autocomplete="off">
+  </div>
+  <input type="hidden" name="_form" value="vivis-lasagna">
+
+  <div class="menu-grid" id="menuGrid"></div>
+
+  <!-- ===== DELIVERY PREFERENCE ===== -->
+  <div class="section">
+    <h2>Delivery Preference</h2>
+    <div class="radio-group">
+      <label><input type="radio" name="delivery-preference" value="Hot & Ready to Eat" required> Hot &amp; ready to eat</label>
+      <label><input type="radio" name="delivery-preference" value="Chilled with Reheating Instructions"> Chilled with reheating instructions</label>
+    </div>
+  </div>
+
+  <!-- ===== PAYMENT ===== -->
+  <div class="section">
+    <h2>Payment Method</h2>
+    <div class="radio-group">
+      <label><input type="radio" name="payment-method" value="Cash" required> Cash</label>
+      <label><input type="radio" name="payment-method" value="Check"> Check</label>
+      <label><input type="radio" name="payment-method" value="Zelle"> Zelle</label>
+    </div>
+  </div>
+
+  <!-- ===== DELIVERY INFO ===== -->
+  <div class="section">
+    <h2>Delivery Details</h2>
+
+    <div class="field">
+      <label for="name">Full Name</label>
+      <input type="text" id="name" name="name" required placeholder="Jane Doe">
+    </div>
+
+    <div class="field">
+      <label for="address">Delivery Address</label>
+      <textarea id="address" name="address" required placeholder="123 Main St, Apt 4B, City, State ZIP"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="date">Preferred Date</label>
+      <input type="date" id="date" name="preferred-date" required>
+    </div>
+
+    <div class="field">
+      <label for="email">Email (for confirmation)</label>
+      <input type="email" id="email" name="email" required placeholder="you@example.com">
+    </div>
+
+    <div class="field">
+      <label for="notes">Special Instructions (optional)</label>
+      <textarea id="notes" name="notes" placeholder="Allergies, extra toppings, etc."></textarea>
+    </div>
+  </div>
+
+  <div class="submit-row">
+    <button type="submit" class="submit-btn" id="submitBtn">Place Order</button>
+  </div>
+</form>
+
+<!-- success overlay -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-box">
+    <div class="icon">&#10003;</div>
+    <h2>Order Placed!</h2>
+    <p>Thank you! A confirmation will be sent to your email shortly.</p>
+    <button class="reset-btn" id="resetBtn">Place Another Order</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ========================================================
+  // MENU CONFIGURATION — edit items & sizes here
+  // ========================================================
+  var MENU = [
+    {
+      id: 'classic-meat-lasagna',
+      name: 'Classic Meat Lasagna',
+      desc: 'Layers of rich beef ragu, ricotta & mozzarella',
+      img: 'https://picsum.photos/seed/lasagna1/400/300',
+      sizes: [
+        { label: 'Single Serving (Serves 1)', price: 15.00 },
+        { label: 'Mini Tray (Serves 4-6)',    price: 55.00 },
+        { label: 'Full Tray (Serves 6-8)',    price: 85.00 }
+      ]
+    },
+    {
+      id: 'vegetable-lasagna',
+      name: 'Vegetable Lasagna',
+      desc: 'Zucchini, bell pepper, spinach & herbed ricotta',
+      img: 'https://picsum.photos/seed/lasagna2/400/300',
+      sizes: [
+        { label: 'Single Serving (Serves 1)', price: 14.00 },
+        { label: 'Mini Tray (Serves 4-6)',    price: 50.00 },
+        { label: 'Full Tray (Serves 6-8)',    price: 80.00 }
+      ]
+    },
+    {
+      id: 'four-cheese-lasagna',
+      name: 'Four Cheese Lasagna',
+      desc: 'Mozzarella, parmesan, ricotta & fontina',
+      img: 'https://picsum.photos/seed/lasagna3/400/300',
+      sizes: [
+        { label: 'Single Serving (Serves 1)', price: 15.50 },
+        { label: 'Mini Tray (Serves 4-6)',    price: 56.00 },
+        { label: 'Full Tray (Serves 6-8)',    price: 88.00 }
+      ]
+    },
+    {
+      id: 'chicken-alfredo-lasagna',
+      name: 'Chicken Alfredo Lasagna',
+      desc: 'Grilled chicken, creamy alfredo & parmesan',
+      img: 'https://picsum.photos/seed/lasagna4/400/300',
+      sizes: [
+        { label: 'Single Serving (Serves 1)', price: 16.00 },
+        { label: 'Mini Tray (Serves 4-6)',    price: 58.00 },
+        { label: 'Full Tray (Serves 6-8)',    price: 90.00 }
+      ]
+    },
+    {
+      id: 'spinach-ricotta-lasagna',
+      name: 'Spinach & Ricotta',
+      desc: 'Fresh spinach, creamy ricotta & nutmeg bechamel',
+      img: 'https://picsum.photos/seed/lasagna5/400/300',
+      sizes: [
+        { label: 'Single Serving (Serves 1)', price: 14.00 },
+        { label: 'Mini Tray (Serves 4-6)',    price: 52.00 },
+        { label: 'Full Tray (Serves 6-8)',    price: 82.00 }
+      ]
+    },
+    {
+      id: 'bolognese-lasagna',
+      name: 'Bolognese Lasagna',
+      desc: 'Slow-simmered pork & beef bolognese, fresh pasta',
+      img: 'https://picsum.photos/seed/lasagna6/400/300',
+      sizes: [
+        { label: 'Single Serving (Serves 1)', price: 16.50 },
+        { label: 'Mini Tray (Serves 4-6)',    price: 60.00 },
+        { label: 'Full Tray (Serves 6-8)',    price: 92.00 }
+      ]
+    }
+  ];
+  // ========================================================
+
+  var grid = document.getElementById('menuGrid');
+  var form = document.getElementById('orderForm');
+  var overlay = document.getElementById('successOverlay');
+  var submitBtn = document.getElementById('submitBtn');
+  var ACTION = new URL('/vivis-lasagna/submit', location.origin).href;
+
+  var dateInput = document.getElementById('date');
+  dateInput.setAttribute('min', new Date().toISOString().split('T')[0]);
+
+  function money(n) { return '$' + n.toFixed(2); }
+
+  // Build cards from config
+  MENU.forEach(function (item) {
+    var lowestPrice = Math.min.apply(null, item.sizes.map(function (s) { return s.price; }));
+
+    var sizeRows = item.sizes.map(function (sz, i) {
+      var fieldName = 'qty__' + item.id + '__' + i;
+      return '<tr>' +
+        '<td>' + sz.label + '</td>' +
+        '<td>' + money(sz.price) + '</td>' +
+        '<td><input type="number" name="' + fieldName + '" min="0" max="50" value="0" data-price="' + sz.price + '"></td>' +
+        '</tr>';
+    }).join('');
+
+    var card = document.createElement('div');
+    card.className = 'menu-card';
+    card.dataset.itemId = item.id;
+    card.innerHTML =
+      '<div class="card-top">' +
+        '<div class="check-badge">&#10003;</div>' +
+        '<img src="' + item.img + '" alt="' + item.name + '" loading="lazy">' +
+        '<div class="card-body">' +
+          '<h3>' + item.name + '</h3>' +
+          '<span class="starting">From ' + money(lowestPrice) + '</span>' +
+          '<p class="desc">' + item.desc + '</p>' +
+          '<p class="tap-hint">Tap to select sizes &amp; quantities</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="size-panel">' +
+        '<table class="size-table">' +
+          '<thead><tr><th>Size</th><th>Price</th><th>Qty</th></tr></thead>' +
+          '<tbody>' + sizeRows + '</tbody>' +
+        '</table>' +
+        '<div class="subtotal-row">' +
+          '<span class="lbl">Subtotal:</span>' +
+          '<span class="amt" data-subtotal>$0.00</span>' +
+        '</div>' +
+      '</div>';
+
+    grid.appendChild(card);
+  });
+
+  // Toggle panel open/close on card-top click
+  grid.addEventListener('click', function (e) {
+    var top = e.target.closest('.card-top');
+    if (!top) return;
+    var card = top.closest('.menu-card');
+    card.classList.toggle('open');
+  });
+
+  // Recalculate subtotal & selected state on qty change
+  grid.addEventListener('input', function (e) {
+    if (e.target.type !== 'number') return;
+    var card = e.target.closest('.menu-card');
+    if (!card) return;
+    updateCardSubtotal(card);
+  });
+
+  function updateCardSubtotal(card) {
+    var inputs = card.querySelectorAll('.size-table input[type="number"]');
+    var total = 0;
+    var hasAny = false;
+    inputs.forEach(function (inp) {
+      var qty = parseInt(inp.value, 10) || 0;
+      if (qty > 0) hasAny = true;
+      total += qty * parseFloat(inp.dataset.price);
+    });
+    card.querySelector('[data-subtotal]').textContent = money(total);
+    card.classList.toggle('selected', hasAny);
+  }
+
+  // Build readable order summary for the email
+  function buildOrderSummary() {
+    var lines = [];
+    var grandTotal = 0;
+    MENU.forEach(function (item, mi) {
+      item.sizes.forEach(function (sz, si) {
+        var inp = form.querySelector('[name="qty__' + item.id + '__' + si + '"]');
+        var qty = parseInt(inp.value, 10) || 0;
+        if (qty > 0) {
+          var lineTotal = qty * sz.price;
+          grandTotal += lineTotal;
+          lines.push(qty + 'x ' + item.name + ' — ' + sz.label + ' @ ' + money(sz.price) + ' = ' + money(lineTotal));
+        }
+      });
+    });
+    if (lines.length) {
+      lines.push('---');
+      lines.push('Grand Total: ' + money(grandTotal));
+    }
+    return lines.join('\n');
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    var summary = buildOrderSummary();
+    if (!summary) {
+      alert('Please select at least one menu item.');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending\u2026';
+
+    var fd = new FormData(form);
+    fd.set('order-summary', summary);
+
+    // Remove zero-qty size fields
+    var keysToRemove = [];
+    fd.forEach(function (val, key) {
+      if (key.startsWith('qty__') && parseInt(val, 10) === 0) keysToRemove.push(key);
+    });
+    keysToRemove.forEach(function (k) { fd.delete(k); });
+
+    fetch(ACTION, {
+      method: 'POST',
+      body: fd,
+      redirect: 'manual'
+    }).then(function (res) {
+      if (res.status === 0 || res.status === 303 || res.ok) {
+        overlay.classList.add('show');
+      } else {
+        throw new Error('Server responded with ' + res.status);
+      }
+    }).catch(function (err) {
+      alert('Something went wrong. Please try again.\n' + err.message);
+    }).finally(function () {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Place Order';
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', function () {
+    overlay.classList.remove('show');
+    form.reset();
+    grid.querySelectorAll('.menu-card').forEach(function (c) {
+      c.classList.remove('selected');
+      c.classList.remove('open');
+      c.querySelector('[data-subtotal]').textContent = '$0.00';
+    });
+  });
+})();
+</script>
+</body>
+</html>
