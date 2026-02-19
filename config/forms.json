@@ -69,7 +69,8 @@
   "vivis-lasagna": {
     "name": "Vivi's Lasagna Order",
     "notifyTo": [
-      "tanujsiripurapu@gmail.com"
+      "tanujsiripurapu@gmail.com",
+      "vivian@vivislasagna.com"
     ],
     "thankYouUrl": "/",
     "subject": "New Vivi's Lasagna Order",
