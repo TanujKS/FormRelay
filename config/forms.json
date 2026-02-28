@@ -85,5 +85,15 @@
     "thankYouUrl": "/thank-you",
     "subject": "New Contact Form Submission",
     "enabled": true
+  },
+  "demo-project": {
+    "name": "Demo Contact Form",
+    "notifyTo": [
+      "tanujsiripurapu@gmail.com"
+    ],
+    "fromEmail": "forms@mail.tanuj.xyz",
+    "thankYouUrl": "/",
+    "subject": "New Demo Contact Form Submission",
+    "enabled": true
   }
 }
