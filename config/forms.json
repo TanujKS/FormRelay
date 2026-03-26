@@ -76,6 +76,17 @@
     "subject": "New Vivi's Lasagna Order",
     "enabled": true
   },
+  "pinecone-learning": {
+    "name": "Pinecone Learning Contact Form",
+    "notifyTo": [
+      "vivian@pineconelearning.com",
+      "tanujsiripurapu@gmail.com"
+    ],
+    "fromEmail": "forms@mail.tanuj.xyz",
+    "thankYouUrl": "/thank-you",
+    "subject": "New Pinecone Learning Contact Form Submission",
+    "enabled": true
+  },
   "contact": {
     "name": "General Contact Form",
     "notifyTo": [
