@@ -79,11 +79,10 @@
   "pinecone-learning": {
     "name": "Pinecone Learning Contact Form",
     "notifyTo": [
-      "vivian@pineconelearning.com",
-      "tanujsiripurapu@gmail.com"
-    ],
+      "pineconelearning@tanuj.xyz"
+ ],
     "fromEmail": "forms@mail.tanuj.xyz",
-    "thankYouUrl": "/thank-you",
+    "thankYouUrl": "/",
     "subject": "New Pinecone Learning Contact Form Submission",
     "enabled": true
   },
