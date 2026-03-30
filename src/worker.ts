@@ -90,13 +90,20 @@ type Env = {
 
         // Fail-closed Turnstile verification: enforced whenever the secret is configured
         if (env.TURNSTILE_SECRET_KEY) {
+          console.log("[Turnstile] Secret key is configured, verification required");
+          console.log("[Turnstile] Token present in form data:", !!data["cf-turnstile-response"]);
+          console.log("[Turnstile] Token length:", data["cf-turnstile-response"]?.length ?? 0);
           const turnstileToken = data["cf-turnstile-response"]?.trim();
           if (!turnstileToken) {
-            console.error("Turnstile token missing from submission");
+            console.error("[Turnstile] REJECTED: token missing or blank");
+            console.error("[Turnstile] Form data keys received:", Object.keys(data).join(", "));
             return cors(new Response("Missing Turnstile verification token", { status: 400 }));
           }
+          console.log("[Turnstile] Calling siteverify for IP:", req.headers.get("CF-Connecting-IP") || "unknown");
           await verifyTurnstile(env, turnstileToken, req);
-          console.log("Turnstile verification passed");
+          console.log("[Turnstile] Verification PASSED");
+        } else {
+          console.log("[Turnstile] No secret key configured, skipping verification");
         }
 
         // Optional: persist to D1
@@ -508,6 +515,10 @@ Received: ${timestamp}
   
   async function verifyTurnstile(env: Env, token: string, req: Request): Promise<void> {
     const ip = req.headers.get("CF-Connecting-IP") || "";
+    console.log("[Turnstile:siteverify] Sending request to Cloudflare...");
+    console.log("[Turnstile:siteverify] remoteip:", ip);
+    console.log("[Turnstile:siteverify] token (first 20 chars):", token.substring(0, 20) + "...");
+
     const resp = await fetch(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
       {
@@ -517,27 +528,39 @@ Received: ${timestamp}
       },
     );
 
+    console.log("[Turnstile:siteverify] HTTP status:", resp.status);
+
     if (!resp.ok) {
+      console.error("[Turnstile:siteverify] Non-OK HTTP response:", resp.status, resp.statusText);
       throw new Error(`Turnstile siteverify HTTP ${resp.status}`);
     }
 
-    let result: { success: boolean; hostname?: string; "error-codes"?: string[] };
+    let result: { success: boolean; hostname?: string; "error-codes"?: string[]; challenge_ts?: string; action?: string; cdata?: string };
     try {
       result = await resp.json();
     } catch {
+      console.error("[Turnstile:siteverify] Failed to parse JSON response");
       throw new Error("Turnstile siteverify returned invalid JSON");
     }
 
+    console.log("[Turnstile:siteverify] Full response:", JSON.stringify(result));
+
     if (!result.success) {
       const codes = result["error-codes"]?.join(", ") || "unknown";
-      console.error(`Turnstile verification failed: ${codes}`);
+      console.error(`[Turnstile:siteverify] FAILED: ${codes}`);
       throw new Error(`Turnstile verification failed (${codes})`);
     }
 
+    console.log("[Turnstile:siteverify] success:", result.success);
+    console.log("[Turnstile:siteverify] hostname:", result.hostname);
+    console.log("[Turnstile:siteverify] challenge_ts:", result.challenge_ts);
+
     if (env.TURNSTILE_EXPECTED_HOSTNAME && result.hostname !== env.TURNSTILE_EXPECTED_HOSTNAME) {
-      console.error(`Turnstile hostname mismatch: expected ${env.TURNSTILE_EXPECTED_HOSTNAME}, got ${result.hostname}`);
+      console.error(`[Turnstile:siteverify] Hostname mismatch: expected "${env.TURNSTILE_EXPECTED_HOSTNAME}", got "${result.hostname}"`);
       throw new Error("Turnstile hostname mismatch");
     }
+
+    console.log("[Turnstile:siteverify] All checks passed");
   }
   
   // KV-based rate limiting: 5 posts per 10 minutes per IP
