@@ -21,6 +21,7 @@ type Env = {
   
     // Turnstile (optional)
     TURNSTILE_SECRET_KEY?: string;
+    TURNSTILE_EXPECTED_HOSTNAME?: string;
   };
   
   export default {
@@ -87,10 +88,16 @@ type Env = {
         //   await enforceRateLimit(env.RATE_KV, req);
         // }
 
-        // Optional: verify Cloudflare Turnstile
-        // if (env.TURNSTILE_SECRET_KEY && data["cf-turnstile-response"]) {
-        //   await verifyTurnstile(env.TURNSTILE_SECRET_KEY, data["cf-turnstile-response"], req);
-        // }
+        // Fail-closed Turnstile verification: enforced whenever the secret is configured
+        if (env.TURNSTILE_SECRET_KEY) {
+          const turnstileToken = data["cf-turnstile-response"]?.trim();
+          if (!turnstileToken) {
+            console.error("Turnstile token missing from submission");
+            return cors(new Response("Missing Turnstile verification token", { status: 400 }));
+          }
+          await verifyTurnstile(env, turnstileToken, req);
+          console.log("Turnstile verification passed");
+        }
 
         // Optional: persist to D1
         // if (env.FORMS_D1) {
@@ -264,7 +271,7 @@ type Env = {
     
     // Filter out system fields
     const filteredData = Object.entries(data)
-      .filter(([key]) => !key.startsWith('_') && key !== 'g-recaptcha-response')
+      .filter(([key]) => !key.startsWith('_') && key !== 'g-recaptcha-response' && key !== 'cf-turnstile-response')
       .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {} as Record<string, string>);
     
     const fieldsHtml = Object.entries(filteredData)
@@ -438,7 +445,7 @@ type Env = {
     
     // Filter out system fields
     const filteredData = Object.entries(data)
-      .filter(([key]) => !key.startsWith('_') && key !== 'g-recaptcha-response')
+      .filter(([key]) => !key.startsWith('_') && key !== 'g-recaptcha-response' && key !== 'cf-turnstile-response')
       .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {} as Record<string, string>);
     
     const fieldsText = Object.entries(filteredData)
@@ -499,15 +506,38 @@ Received: ${timestamp}
     return new Response(res.body, { status: res.status, headers: hdrs });
   }
   
-  // Cloudflare Turnstile verification
-  async function verifyTurnstile(secret: string, token: string, req: Request) {
+  async function verifyTurnstile(env: Env, token: string, req: Request): Promise<void> {
     const ip = req.headers.get("CF-Connecting-IP") || "";
-    const resp = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-      method: "POST",
-      body: new URLSearchParams({ secret, response: token, remoteip: ip }),
-    });
-    const out = await resp.json() as { success: boolean; error_codes?: string[] };
-    if (!out.success) throw new Error("Turnstile verification failed");
+    const resp = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY!, response: token, remoteip: ip }),
+      },
+    );
+
+    if (!resp.ok) {
+      throw new Error(`Turnstile siteverify HTTP ${resp.status}`);
+    }
+
+    let result: { success: boolean; hostname?: string; "error-codes"?: string[] };
+    try {
+      result = await resp.json();
+    } catch {
+      throw new Error("Turnstile siteverify returned invalid JSON");
+    }
+
+    if (!result.success) {
+      const codes = result["error-codes"]?.join(", ") || "unknown";
+      console.error(`Turnstile verification failed: ${codes}`);
+      throw new Error(`Turnstile verification failed (${codes})`);
+    }
+
+    if (env.TURNSTILE_EXPECTED_HOSTNAME && result.hostname !== env.TURNSTILE_EXPECTED_HOSTNAME) {
+      console.error(`Turnstile hostname mismatch: expected ${env.TURNSTILE_EXPECTED_HOSTNAME}, got ${result.hostname}`);
+      throw new Error("Turnstile hostname mismatch");
+    }
   }
   
   // KV-based rate limiting: 5 posts per 10 minutes per IP
