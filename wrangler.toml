@@ -24,8 +24,13 @@ compatibility_date = "2025-01-09"
 # database_name = "forms"
 # database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
+[observability]
 [observability.logs]
 enabled = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
 
 [assets]
 directory = "./public"
