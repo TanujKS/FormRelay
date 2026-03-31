@@ -14,7 +14,11 @@ type FormConfig = {
 type Env = {
     MAILGUN_API_KEY: string;
     MAILGUN_DOMAIN: string; // e.g., "mail.tanuj.xyz"
-  
+
+    // Dev mode flag: when enabled, all submissions are sent ONLY
+    // to the defaultNotifyTo address from config/defaults.json
+    DEV_MODE?: string;
+
     // Optional bindings
     RATE_KV?: KVNamespace;
     FORMS_D1?: D1Database;
@@ -137,7 +141,15 @@ type Env = {
         const textContent = generateTextEmail(data, formName, formConfig);
         
         // Determine recipients
-        const recipients = formConfig?.notifyTo || [defaults.defaultNotifyTo];
+        const isDevMode =
+          env.DEV_MODE === "true" ||
+          env.DEV_MODE === "1" ||
+          env.DEV_MODE === "yes";
+
+        const recipients = isDevMode
+          ? [defaults.defaultNotifyTo]
+          : (formConfig?.notifyTo || [defaults.defaultNotifyTo]);
+
         const fromEmail = formConfig?.fromEmail || defaults.defaultFromEmail;
         
         console.log(`📧 Sending email via Mailgun:`);

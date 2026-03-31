@@ -10,6 +10,9 @@ compatibility_date = "2025-01-09"
 # - MAILGUN_API_KEY
 # - MAILGUN_DOMAIN (e.g., "mail.tanuj.xyz")
 #
+# Optional (non-secret):
+# - DEV_MODE (e.g., "true" to force all submissions to use defaultNotifyTo)
+#
 # Form configurations are in repository files:
 # - config/forms.json (form-specific settings)
 # - config/defaults.json (default fallback settings)
