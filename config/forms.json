@@ -24,7 +24,7 @@
       "tanuj@tarotcardlady.net",
       "christine@tarotcardlady.net"
     ],
-    "thankYouUrl": "/thank-you",
+    "thankYouUrl": "/",
     "subject": "New TarotCardLady Contact Form Submission",
     "enabled": true
   },

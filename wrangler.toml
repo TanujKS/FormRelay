@@ -1,6 +1,7 @@
 name = "form-relay"
 main = "src/worker.ts"
 compatibility_date = "2025-01-09"
+preview_urls = true
 
 # Custom domain will be configured in Cloudflare Dashboard
 # Go to Workers & Pages → form-relay → Settings → Custom Domains
