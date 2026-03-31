@@ -32,7 +32,25 @@ type Env = {
     async fetch(req: Request, env: Env, ctx: ExecutionContext) {
       const url = new URL(req.url);
       console.log(`[${new Date().toISOString()}] ${req.method} ${url.pathname} - IP: ${req.headers.get("CF-Connecting-IP") || "unknown"}`);
-  
+
+      // Simple dev status endpoint to expose whether DEV_MODE is enabled
+      if (url.pathname === "/dev-status") {
+        const isDevMode =
+          env.DEV_MODE === "true" ||
+          env.DEV_MODE === "1" ||
+          env.DEV_MODE === "yes";
+
+        return cors(new Response(JSON.stringify({
+          devMode: isDevMode,
+          rawDevMode: env.DEV_MODE ?? null,
+        }), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }));
+      }
+
       // CORS preflight for JS clients (HTML <form> posts don't need this)
       if (req.method === "OPTIONS") {
         console.log("Handling CORS preflight request");

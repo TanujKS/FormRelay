@@ -25,20 +25,8 @@
                     <li>Global, low-latency Workers</li>
                     <li>Built for reliable delivery</li>
                 </ul>
-            </section>
-
-            <section class="hero" style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1.5rem;">
-                <h2>DEV_MODE</h2>
-                <p>
-                    When <code>DEV_MODE</code> is enabled in your Worker environment,
-                    all submissions are sent only to <code>defaultNotifyTo</code> from
-                    <code>config/defaults.json</code>, ignoring any per-form
-                    <code>notifyTo</code> settings.
-                </p>
-                <p>
-                    Configure in <code>wrangler.toml</code> (or via the dashboard) with
-                    a value of <code>"true"</code>, <code>"1"</code>, or
-                    <code>"yes"</code>.
+                <p id="dev-mode-indicator" style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                    Dev mode: <span id="dev-mode-status">checking…</span>
                 </p>
             </section>
         </main>
@@ -47,5 +35,22 @@
             <p>&copy; 2026 Form Relay. Authorized users only.</p>
         </footer>
     </div>
+    <script>
+        (function () {
+            const statusEl = document.getElementById('dev-mode-status');
+            if (!statusEl) return;
+
+            fetch('/dev-status')
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    statusEl.textContent = data.devMode ? 'ENABLED' : 'disabled';
+                    statusEl.style.fontWeight = data.devMode ? '600' : '400';
+                    statusEl.style.color = data.devMode ? '#b22222' : '#666';
+                })
+                .catch(function () {
+                    statusEl.textContent = 'unknown';
+                });
+        })();
+    </script>
 </body>
 </html>
