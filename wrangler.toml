@@ -20,7 +20,7 @@ preview_urls = true
 
 [vars]
 # Uncomment to enable dev mode in non-production environments
-DEV_MODE = "true"
+DEV_MODE = "false"
 
 # Optional: bindings (currently commented out)
 # [[kv_namespaces]]
