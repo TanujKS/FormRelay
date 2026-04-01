@@ -35,10 +35,7 @@ type Env = {
 
       // Simple dev status endpoint to expose whether DEV_MODE is enabled
       if (url.pathname === "/dev-status") {
-        const isDevMode =
-          env.DEV_MODE === "true" ||
-          env.DEV_MODE === "1" ||
-          env.DEV_MODE === "yes";
+        const isDevMode = isDevModeEnabled(env);
 
         return cors(new Response(JSON.stringify({
           devMode: isDevMode,
@@ -159,14 +156,17 @@ type Env = {
         const textContent = generateTextEmail(data, formName, formConfig);
         
         // Determine recipients
-        const isDevMode =
-          env.DEV_MODE === "true" ||
-          env.DEV_MODE === "1" ||
-          env.DEV_MODE === "yes";
+        const isDevMode = isDevModeEnabled(env);
 
         const recipients = isDevMode
           ? [defaults.defaultNotifyTo]
           : (formConfig?.notifyTo || [defaults.defaultNotifyTo]);
+
+        if (isDevMode) {
+          console.log("[DEV_MODE] Enabled: overriding form-specific recipients with defaultNotifyTo.");
+          console.log("[DEV_MODE] Original form notifyTo:", formConfig?.notifyTo || []);
+          console.log("[DEV_MODE] Final recipients used:", recipients);
+        }
 
         const fromEmail = formConfig?.fromEmail || defaults.defaultFromEmail;
         
@@ -502,9 +502,29 @@ Received: ${timestamp}
 `;
   }
   
+  function isDevModeEnabled(env: Env): boolean {
+    return (
+      env.DEV_MODE === "true" ||
+      env.DEV_MODE === "1" ||
+      env.DEV_MODE === "yes"
+    );
+  }
+
   async function sendWithMailgun(env: Env, { to, from, subject, html, text }: { to: string; from: string; subject: string; html: string; text: string; }) {
     const url = `https://api.mailgun.net/v3/${env.MAILGUN_DOMAIN}/messages`;
     console.log(`📡 Making request to Mailgun API: ${url}`);
+
+    const devMode = isDevModeEnabled(env);
+    if (devMode) {
+      console.log("[DEV_MODE] Mailgun email debug payload:", {
+        to,
+        from,
+        subject,
+        mailgunUrl: url,
+        htmlPreview: html.slice(0, 500),
+        textPreview: text.slice(0, 500),
+      });
+    }
     
     const res = await fetch(url, {
       method: "POST",

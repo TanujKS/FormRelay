@@ -6,17 +6,21 @@ preview_urls = true
 # Custom domain will be configured in Cloudflare Dashboard
 # Go to Workers & Pages → form-relay → Settings → Custom Domains
 
-# Environment variables (set these via wrangler secret put)
-# Required (sensitive information only):
+# Environment variables
+# Required secrets (set via `wrangler secret put`):
 # - MAILGUN_API_KEY
 # - MAILGUN_DOMAIN (e.g., "mail.tanuj.xyz")
 #
-# Optional (non-secret):
+# Optional, non-secret vars (set via `wrangler.toml` [vars] or dashboard env vars):
 # - DEV_MODE (e.g., "true" to force all submissions to use defaultNotifyTo)
 #
 # Form configurations are in repository files:
 # - config/forms.json (form-specific settings)
 # - config/defaults.json (default fallback settings)
+
+[vars]
+# Uncomment to enable dev mode in non-production environments
+DEV_MODE = "true"
 
 # Optional: bindings (currently commented out)
 # [[kv_namespaces]]
