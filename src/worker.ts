@@ -22,16 +22,108 @@ type Env = {
     // Turnstile (optional)
     TURNSTILE_SECRET_KEY?: string;
     TURNSTILE_EXPECTED_HOSTNAME?: string;
+    DEBUG?: string;
+    DISCORD_ERROR_WEBHOOK?: string;
   };
+
+type ErrorSummary = {
+    name: string;
+    message: string;
+    stack?: string;
+  };
+
+  function isDebugEnabled(env: Env): boolean {
+    const value = env.DEBUG?.trim().toLowerCase();
+    return value === "1" || value === "true" || value === "yes" || value === "on";
+  }
+
+  function debugLog(env: Env, ...args: unknown[]): void {
+    if (isDebugEnabled(env)) console.log(...args);
+  }
+
+  function debugError(env: Env, ...args: unknown[]): void {
+    if (isDebugEnabled(env)) console.error(...args);
+  }
+
+  function normalizeError(err: unknown): ErrorSummary {
+    if (err instanceof Error) {
+      return {
+        name: err.name || "Error",
+        message: err.message || "Unknown error",
+        stack: err.stack,
+      };
+    }
+
+    if (typeof err === "string") {
+      return { name: "Error", message: err };
+    }
+
+    try {
+      return { name: "Error", message: JSON.stringify(err) };
+    } catch {
+      return { name: "Error", message: String(err) };
+    }
+  }
+
+  function truncateForDiscord(value: string, maxLength: number): string {
+    if (value.length <= maxLength) return value;
+    return `${value.slice(0, Math.max(0, maxLength - 3))}...`;
+  }
+
+  async function notifyDiscordAboutError(
+    env: Env,
+    req: Request,
+    err: unknown,
+    details: { formName?: string },
+  ): Promise<void> {
+    if (!env.DISCORD_ERROR_WEBHOOK) {
+      debugError(env, "[Discord] DISCORD_ERROR_WEBHOOK is not configured");
+      return;
+    }
+
+    const url = new URL(req.url);
+    const error = normalizeError(err);
+    const stackBlock = error.stack
+      ? `\n\`\`\`\n${truncateForDiscord(error.stack, 900)}\n\`\`\``
+      : "";
+    const content = truncateForDiscord(
+      [
+        "**FormRelay worker error**",
+        `Time: ${new Date().toISOString()}`,
+        `Method: ${req.method}`,
+        `Path: ${url.pathname}`,
+        `Ray ID: ${req.headers.get("cf-ray") || "n/a"}`,
+        `Form: ${details.formName || "unknown"}`,
+        `Error: ${error.name}: ${error.message}`,
+      ].join("\n") + stackBlock,
+      1900,
+    );
+
+    try {
+      const response = await fetch(env.DISCORD_ERROR_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        debugError(env, `[Discord] Webhook failed: ${response.status} ${response.statusText}`, responseText);
+      }
+    } catch (notifyError) {
+      debugError(env, "[Discord] Webhook request failed:", normalizeError(notifyError));
+    }
+  }
   
   export default {
     async fetch(req: Request, env: Env, ctx: ExecutionContext) {
       const url = new URL(req.url);
-      console.log(`[${new Date().toISOString()}] ${req.method} ${url.pathname} - IP: ${req.headers.get("CF-Connecting-IP") || "unknown"}`);
+      let formName: string | undefined;
+      debugLog(env, `[${new Date().toISOString()}] ${req.method} ${url.pathname} - IP: ${req.headers.get("CF-Connecting-IP") || "unknown"}`);
   
       // CORS preflight for JS clients (HTML <form> posts don't need this)
       if (req.method === "OPTIONS") {
-        console.log("Handling CORS preflight request");
+        debugLog(env, "Handling CORS preflight request");
         return cors(new Response(null, { status: 204 }));
       }
 
@@ -41,45 +133,45 @@ type Env = {
                          (url.pathname.split('/').length === 3 && url.pathname.endsWith('/submit'));
       
       if (!isFormRoute) {
-        console.log(`404: Path not found: ${url.pathname}`);
+        debugLog(env, `404: Path not found: ${url.pathname}`);
         return new Response("Not Found", { status: 404 });
       }
   
       if (req.method !== "POST") {
-        console.log(`405: Method not allowed: ${req.method}`);
+        debugLog(env, `405: Method not allowed: ${req.method}`);
         return cors(new Response("Method Not Allowed", { status: 405 }));
       }
   
       try {
         // Check environment variables first
-        console.log("Checking environment variables...");
+        debugLog(env, "Checking environment variables...");
         if (!env.MAILGUN_API_KEY) {
-          console.error("❌ MAILGUN_API_KEY is missing!");
+          debugError(env, "❌ MAILGUN_API_KEY is missing!");
           throw new Error("MAILGUN_API_KEY environment variable is not set");
         }
         if (!env.MAILGUN_DOMAIN) {
-          console.error("❌ MAILGUN_DOMAIN is missing!");
+          debugError(env, "❌ MAILGUN_DOMAIN is missing!");
           throw new Error("MAILGUN_DOMAIN environment variable is not set");
         }
-        console.log("✅ All required environment variables are present");
+        debugLog(env, "✅ All required environment variables are present");
 
         const data = await parseBody(req);
-        console.log("Form data received:", JSON.stringify(data, null, 2));
+        debugLog(env, "Form data received:", JSON.stringify(data, null, 2));
   
         // Get form configuration
-        const formConfig = getFormConfig(url.pathname);
-        const formName = formConfig?.name || data._form || "contact";
+        const formConfig = getFormConfig(url.pathname, env);
+        formName = formConfig?.name || data._form || "contact";
         const defaults = getDefaultConfigs();
         
         // Check if form is enabled
         if (formConfig && formConfig.enabled === false) {
-          console.log(`❌ Form '${formName}' is disabled`);
+          debugLog(env, `❌ Form '${formName}' is disabled`);
           return cors(new Response("Form is currently disabled", { status: 503 }));
         }
   
         // Optional: basic honeypot (bots fill hidden field)
         if (data._hp) {
-          console.log("🤖 Honeypot triggered - likely a bot");
+          debugLog(env, "🤖 Honeypot triggered - likely a bot");
           return cors(new Response("OK", { status: 200 }));
         }
   
@@ -90,20 +182,20 @@ type Env = {
 
         // Fail-closed Turnstile verification: enforced whenever the secret is configured
         if (env.TURNSTILE_SECRET_KEY) {
-          console.log("[Turnstile] Secret key is configured, verification required");
-          console.log("[Turnstile] Token present in form data:", !!data["cf-turnstile-response"]);
-          console.log("[Turnstile] Token length:", data["cf-turnstile-response"]?.length ?? 0);
+          debugLog(env, "[Turnstile] Secret key is configured, verification required");
+          debugLog(env, "[Turnstile] Token present in form data:", !!data["cf-turnstile-response"]);
+          debugLog(env, "[Turnstile] Token length:", data["cf-turnstile-response"]?.length ?? 0);
           const turnstileToken = data["cf-turnstile-response"]?.trim();
           if (!turnstileToken) {
-            console.error("[Turnstile] REJECTED: token missing or blank");
-            console.error("[Turnstile] Form data keys received:", Object.keys(data).join(", "));
+            debugError(env, "[Turnstile] REJECTED: token missing or blank");
+            debugError(env, "[Turnstile] Form data keys received:", Object.keys(data).join(", "));
             return cors(new Response("Missing Turnstile verification token", { status: 400 }));
           }
-          console.log("[Turnstile] Calling siteverify for IP:", req.headers.get("CF-Connecting-IP") || "unknown");
+          debugLog(env, "[Turnstile] Calling siteverify for IP:", req.headers.get("CF-Connecting-IP") || "unknown");
           await verifyTurnstile(env, turnstileToken, req);
-          console.log("[Turnstile] Verification PASSED");
+          debugLog(env, "[Turnstile] Verification PASSED");
         } else {
-          console.log("[Turnstile] No secret key configured, skipping verification");
+          debugLog(env, "[Turnstile] No secret key configured, skipping verification");
         }
 
         // Optional: persist to D1
@@ -140,11 +232,11 @@ type Env = {
         const recipients = formConfig?.notifyTo || [defaults.defaultNotifyTo];
         const fromEmail = formConfig?.fromEmail || defaults.defaultFromEmail;
         
-        console.log(`📧 Sending email via Mailgun:`);
-        console.log(`  From: ${fromEmail}`);
-        console.log(`  To: ${recipients.join(', ')}`);
-        console.log(`  Subject: ${subject}`);
-        console.log(`  Domain: ${env.MAILGUN_DOMAIN}`);
+        debugLog(env, `📧 Sending email via Mailgun:`);
+        debugLog(env, `  From: ${fromEmail}`);
+        debugLog(env, `  To: ${recipients.join(', ')}`);
+        debugLog(env, `  Subject: ${subject}`);
+        debugLog(env, `  Domain: ${env.MAILGUN_DOMAIN}`);
         
         // Send to all recipients
         for (const recipient of recipients) {
@@ -155,7 +247,7 @@ type Env = {
             html: htmlContent,
             text: textContent
           });
-          console.log(`✅ Email sent successfully to: ${recipient}`);
+          debugLog(env, `✅ Email sent successfully to: ${recipient}`);
         }
   
         // Redirect target:
@@ -167,7 +259,7 @@ type Env = {
         const target = explicit || formThankYou || qsRedirect || fallback;
   
         // Smart redirect logic: if thankYouUrl is relative, use requesting origin
-        let absolute;
+        let absolute: string;
         if (formThankYou && formThankYou.startsWith('/') && !explicit) {
           // Get the requesting origin from the Referer header
           const referer = req.headers.get('referer');
@@ -175,23 +267,23 @@ type Env = {
             try {
               const refererUrl = new URL(referer);
               absolute = `${refererUrl.origin}${formThankYou}`;
-              console.log(`🔄 Smart redirect: Using requesting origin ${refererUrl.origin} + ${formThankYou}`);
-            } catch (e) {
+              debugLog(env, `🔄 Smart redirect: Using requesting origin ${refererUrl.origin} + ${formThankYou}`);
+            } catch {
               // Fallback to current domain if referer is invalid
               absolute = new URL(formThankYou, req.url).toString();
-              console.log(`🔄 Fallback redirect: Invalid referer, using current domain`);
+              debugLog(env, `🔄 Fallback redirect: Invalid referer, using current domain`);
             }
           } else {
             // No referer, use current domain
             absolute = new URL(formThankYou, req.url).toString();
-            console.log(`🔄 No referer: Using current domain for relative path`);
+            debugLog(env, `🔄 No referer: Using current domain for relative path`);
           }
         } else {
           // Absolute URL or explicit redirect - use as-is
           absolute = new URL(target, req.url).toString();
         }
         
-        console.log(`🔄 Redirecting to: ${absolute}`);
+        debugLog(env, `🔄 Redirecting to: ${absolute}`);
         
         // Always redirect for form submissions - simple and works everywhere
         const redirectResponse = new Response(null, {
@@ -205,23 +297,20 @@ type Env = {
         });
         
         return redirectResponse;
-      } catch (err: any) {
-        console.error("❌ Form submission failed:", err);
-        console.error("Error details:", {
-          message: err.message,
-          stack: err.stack,
-          name: err.name
-        });
+      } catch (err: unknown) {
+        const error = normalizeError(err);
+        debugError(env, "❌ Form submission failed:", error);
+        ctx.waitUntil(notifyDiscordAboutError(env, req, err, { formName }));
         // Return JSON for JS clients; HTML forms will just see a simple text
-        return cors(new Response(`Error: ${err.message || err}`, { status: 400 }));
+        return cors(new Response(`Error: ${error.message}`, { status: 400 }));
       }
     },
   } satisfies ExportedHandler<Env>;
   
   // ===== helpers =====
   
-  function getFormConfigs(): Record<string, FormConfig> {
-    console.log("Loaded form configurations:", Object.keys(formConfigs));
+  function getFormConfigs(env: Env): Record<string, FormConfig> {
+    debugLog(env, "Loaded form configurations:", Object.keys(formConfigs));
     return formConfigs as Record<string, FormConfig>;
   }
   
@@ -229,8 +318,8 @@ type Env = {
     return defaultConfigs;
   }
   
-  function getFormConfig(pathname: string): FormConfig | null {
-    const configs = getFormConfigs();
+  function getFormConfig(pathname: string, env: Env): FormConfig | null {
+    const configs = getFormConfigs(env);
     
     // Extract form name from path like /ecofresh/submit -> ecofresh
     const pathParts = pathname.split('/').filter(Boolean);
@@ -239,10 +328,10 @@ type Env = {
       const config = configs[formName];
       
       if (config) {
-        console.log(`Found form config for: ${formName}`);
+        debugLog(env, `Found form config for: ${formName}`);
         return config;
       } else {
-        console.log(`No config found for form: ${formName}`);
+        debugLog(env, `No config found for form: ${formName}`);
       }
     }
     
@@ -474,7 +563,7 @@ Received: ${timestamp}
   
   async function sendWithMailgun(env: Env, { to, from, subject, html, text }: { to: string; from: string; subject: string; html: string; text: string; }) {
     const url = `https://api.mailgun.net/v3/${env.MAILGUN_DOMAIN}/messages`;
-    console.log(`📡 Making request to Mailgun API: ${url}`);
+    debugLog(env, `📡 Making request to Mailgun API: ${url}`);
     
     const res = await fetch(url, {
       method: "POST",
@@ -491,17 +580,17 @@ Received: ${timestamp}
       }),
     });
     
-    console.log(`📡 Mailgun API response: ${res.status} ${res.statusText}`);
+    debugLog(env, `📡 Mailgun API response: ${res.status} ${res.statusText}`);
     
     if (!res.ok) {
       const errorText = await res.text();
-      console.error(`❌ Mailgun API error: ${res.status} ${res.statusText}`);
-      console.error(`❌ Mailgun error response: ${errorText}`);
+      debugError(env, `❌ Mailgun API error: ${res.status} ${res.statusText}`);
+      debugError(env, `❌ Mailgun error response: ${errorText}`);
       throw new Error(`Mailgun failed: ${res.status} ${errorText}`);
     }
     
     const responseText = await res.text();
-    console.log(`✅ Mailgun API success: ${responseText}`);
+    debugLog(env, `✅ Mailgun API success: ${responseText}`);
   }
   
   // very light CORS; adjust origin list as needed
@@ -515,9 +604,9 @@ Received: ${timestamp}
   
   async function verifyTurnstile(env: Env, token: string, req: Request): Promise<void> {
     const ip = req.headers.get("CF-Connecting-IP") || "";
-    console.log("[Turnstile:siteverify] Sending request to Cloudflare...");
-    console.log("[Turnstile:siteverify] remoteip:", ip);
-    console.log("[Turnstile:siteverify] token (first 20 chars):", token.substring(0, 20) + "...");
+    debugLog(env, "[Turnstile:siteverify] Sending request to Cloudflare...");
+    debugLog(env, "[Turnstile:siteverify] remoteip:", ip);
+    debugLog(env, "[Turnstile:siteverify] token (first 20 chars):", token.substring(0, 20) + "...");
 
     const resp = await fetch(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
@@ -528,10 +617,10 @@ Received: ${timestamp}
       },
     );
 
-    console.log("[Turnstile:siteverify] HTTP status:", resp.status);
+    debugLog(env, "[Turnstile:siteverify] HTTP status:", resp.status);
 
     if (!resp.ok) {
-      console.error("[Turnstile:siteverify] Non-OK HTTP response:", resp.status, resp.statusText);
+      debugError(env, "[Turnstile:siteverify] Non-OK HTTP response:", resp.status, resp.statusText);
       throw new Error(`Turnstile siteverify HTTP ${resp.status}`);
     }
 
@@ -539,28 +628,28 @@ Received: ${timestamp}
     try {
       result = await resp.json();
     } catch {
-      console.error("[Turnstile:siteverify] Failed to parse JSON response");
+      debugError(env, "[Turnstile:siteverify] Failed to parse JSON response");
       throw new Error("Turnstile siteverify returned invalid JSON");
     }
 
-    console.log("[Turnstile:siteverify] Full response:", JSON.stringify(result));
+    debugLog(env, "[Turnstile:siteverify] Full response:", JSON.stringify(result));
 
     if (!result.success) {
       const codes = result["error-codes"]?.join(", ") || "unknown";
-      console.error(`[Turnstile:siteverify] FAILED: ${codes}`);
+      debugError(env, `[Turnstile:siteverify] FAILED: ${codes}`);
       throw new Error(`Turnstile verification failed (${codes})`);
     }
 
-    console.log("[Turnstile:siteverify] success:", result.success);
-    console.log("[Turnstile:siteverify] hostname:", result.hostname);
-    console.log("[Turnstile:siteverify] challenge_ts:", result.challenge_ts);
+    debugLog(env, "[Turnstile:siteverify] success:", result.success);
+    debugLog(env, "[Turnstile:siteverify] hostname:", result.hostname);
+    debugLog(env, "[Turnstile:siteverify] challenge_ts:", result.challenge_ts);
 
     if (env.TURNSTILE_EXPECTED_HOSTNAME && result.hostname !== env.TURNSTILE_EXPECTED_HOSTNAME) {
-      console.error(`[Turnstile:siteverify] Hostname mismatch: expected "${env.TURNSTILE_EXPECTED_HOSTNAME}", got "${result.hostname}"`);
+      debugError(env, `[Turnstile:siteverify] Hostname mismatch: expected "${env.TURNSTILE_EXPECTED_HOSTNAME}", got "${result.hostname}"`);
       throw new Error("Turnstile hostname mismatch");
     }
 
-    console.log("[Turnstile:siteverify] All checks passed");
+    debugLog(env, "[Turnstile:siteverify] All checks passed");
   }
   
   // KV-based rate limiting: 5 posts per 10 minutes per IP

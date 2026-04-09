@@ -9,10 +9,14 @@ compatibility_date = "2025-01-09"
 # Required (sensitive information only):
 # - MAILGUN_API_KEY
 # - MAILGUN_DOMAIN (e.g., "mail.tanuj.xyz")
+# - DISCORD_ERROR_WEBHOOK
 #
 # Form configurations are in repository files:
 # - config/forms.json (form-specific settings)
 # - config/defaults.json (default fallback settings)
+
+[vars]
+DEBUG = "false"
 
 # Optional: bindings (currently commented out)
 # [[kv_namespaces]]
@@ -26,10 +30,22 @@ compatibility_date = "2025-01-09"
 
 [observability]
 [observability.logs]
+enabled = false
+invocation_logs = false
+[observability.traces]
+enabled = false
+
+[env.debug.vars]
+DEBUG = "true"
+
+[env.debug.observability]
+enabled = true
+
+[env.debug.observability.logs]
 enabled = true
 invocation_logs = true
 
-[observability.traces]
+[env.debug.observability.traces]
 enabled = false
 
 [assets]
