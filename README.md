@@ -79,11 +79,31 @@ wrangler secret put MAILGUN_DOMAIN
 ### 5. Deploy
 
 ```bash
-# Deploy to production
+# Deploy the default environment (production-style config)
 npm run deploy
+```
 
-# Or deploy a preview
-npm run deploy:preview
+### 6. Environments
+
+This repo currently defines these Wrangler environments:
+
+- **Default environment**: top-level `wrangler.toml` config, intended for normal production-style deploys
+- **Debug environment**: `debug`, which enables `DEBUG` logging and Worker observability
+
+Deploy commands:
+
+```bash
+# Default environment
+wrangler deploy
+
+# Specific environment
+wrangler deploy --env debug
+```
+
+If you add more environments later, deploy them with the same pattern:
+
+```bash
+wrangler deploy --env <environment-name>
 ```
 
 ## Basic Usage
@@ -334,13 +354,14 @@ Before deploying to production:
    ```bash
    wrangler secret put MAILGUN_API_KEY
    wrangler secret put MAILGUN_DOMAIN
+   wrangler secret put DISCORD_ERROR_WEBHOOK
    # Form configurations are now in config/forms.json and config/defaults.json
    ```
-3. Deploy to a preview environment first:
+3. Optionally deploy the debug environment first:
    ```bash
-   npm run deploy:preview
+   wrangler deploy --env debug
    ```
-4. Test the preview URL
+4. Test the deployed URL
 5. Deploy to production:
    ```bash
    npm run deploy

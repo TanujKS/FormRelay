@@ -5,6 +5,14 @@ preview_urls = true
 
 # Custom domain will be configured in Cloudflare Dashboard
 # Go to Workers & Pages → form-relay → Settings → Custom Domains
+#
+# Environments configured in this file:
+# - default (top-level config): production-style deploy with DEBUG disabled
+# - debug: deploy with `wrangler deploy --env debug` to enable DEBUG and observability
+#
+# Deploy commands:
+# - Default environment: `wrangler deploy`
+# - Specific environment: `wrangler deploy --env debug`
 
 # Environment variables
 # Required secrets (set via `wrangler secret put`):
