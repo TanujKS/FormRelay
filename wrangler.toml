@@ -10,9 +10,11 @@ preview_urls = true
 # Required secrets (set via `wrangler secret put`):
 # - MAILGUN_API_KEY
 # - MAILGUN_DOMAIN (e.g., "mail.tanuj.xyz")
+# - DISCORD_ERROR_WEBHOOK
 #
 # Optional, non-secret vars (set via `wrangler.toml` [vars] or dashboard env vars):
 # - DEV_MODE (e.g., "true" to force all submissions to use defaultNotifyTo)
+# - DEBUG (e.g., "true" to enable runtime debug logging)
 #
 # Form configurations are in repository files:
 # - config/forms.json (form-specific settings)
@@ -21,6 +23,7 @@ preview_urls = true
 [vars]
 # Uncomment to enable dev mode in non-production environments
 DEV_MODE = "false"
+DEBUG = "false"
 
 # Optional: bindings (currently commented out)
 # [[kv_namespaces]]
@@ -34,10 +37,23 @@ DEV_MODE = "false"
 
 [observability]
 [observability.logs]
+enabled = false
+invocation_logs = false
+[observability.traces]
+enabled = false
+
+[env.debug.vars]
+DEV_MODE = "false"
+DEBUG = "true"
+
+[env.debug.observability]
+enabled = true
+
+[env.debug.observability.logs]
 enabled = true
 invocation_logs = true
 
-[observability.traces]
+[env.debug.observability.traces]
 enabled = false
 
 [assets]
