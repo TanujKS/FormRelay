@@ -79,20 +79,22 @@
   "pinecone-learning": {
     "name": "Pinecone Learning Contact Form",
     "notifyTo": [
-      "pineconelearning@tanuj.xyz"
+      "pineconelearning@tanuj.xyz",
+      "vivian@pineconelearning.com"
     ],
     "fromEmail": "forms@mail.tanuj.xyz",
-    "thankYouUrl": "/",
+    "thankYouUrl": "/thank-you",
     "subject": "New Pinecone Learning Contact Form Submission",
     "enabled": true
   },
   "pinecone-ai-application": {
     "name": "Pinecone Learning AI Application",
     "notifyTo": [
-      "pineconelearning@tanuj.xyz"
+      "pineconelearning@tanuj.xyz",
+      "vivian@pineconelearning.com"
     ],
     "fromEmail": "forms@mail.tanuj.xyz",
-    "thankYouUrl": "/adventures-in-ai",
+    "thankYouUrl": "/thank-you",
     "subject": "New Adventures in AI Application",
     "enabled": true
   },
