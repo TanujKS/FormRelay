@@ -85,22 +85,23 @@ npm run deploy
 
 ### 6. Environments
 
-This repo currently defines these Wrangler environments:
+Cloudflare observability stays enabled for this Worker.
 
-- **Default environment**: top-level `wrangler.toml` config, intended for normal production-style deploys
-- **Debug environment**: `debug`, which enables `DEBUG` logging and Worker observability
+`DEBUG` is a separate plaintext Worker variable that only controls runtime `console.log` / `console.error` output.
+
+You can change it in either of these places:
+
+- `wrangler.toml` under `[vars]`, then redeploy with `wrangler deploy`
+- Cloudflare dashboard under Worker Settings -> Variables, then deploy from the dashboard
 
 Deploy commands:
 
 ```bash
-# Default environment
+# Deploy current config
 wrangler deploy
-
-# Specific environment
-wrangler deploy --env debug
 ```
 
-If you add more environments later, deploy them with the same pattern:
+If you add named Wrangler environments later, deploy them with:
 
 ```bash
 wrangler deploy --env <environment-name>
@@ -357,9 +358,9 @@ Before deploying to production:
    wrangler secret put DISCORD_ERROR_WEBHOOK
    # Form configurations are now in config/forms.json and config/defaults.json
    ```
-3. Optionally deploy the debug environment first:
+3. If you want runtime debug logs, set `DEBUG=true` in `wrangler.toml` or the Cloudflare dashboard variables UI, then deploy. Cloudflare observability stays enabled either way:
    ```bash
-   wrangler deploy --env debug
+   wrangler deploy
    ```
 4. Test the deployed URL
 5. Deploy to production:

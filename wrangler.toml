@@ -6,13 +6,15 @@ preview_urls = true
 # Custom domain will be configured in Cloudflare Dashboard
 # Go to Workers & Pages → form-relay → Settings → Custom Domains
 #
-# Environments configured in this file:
-# - default (top-level config): production-style deploy with DEBUG disabled
-# - debug: deploy with `wrangler deploy --env debug` to enable DEBUG and observability
+# Cloudflare observability is always enabled for this Worker.
+# DEBUG is a separate plaintext variable that only gates runtime `console.*` logs.
+# You can change it in either place:
+# - here in `[vars]`, followed by `wrangler deploy`
+# - in the Cloudflare dashboard under Settings → Variables, then deploy the Worker
 #
 # Deploy commands:
-# - Default environment: `wrangler deploy`
-# - Specific environment: `wrangler deploy --env debug`
+# - Deploy current config: `wrangler deploy`
+# - Deploy a named environment later: `wrangler deploy --env <environment-name>`
 
 # Environment variables
 # Required secrets (set via `wrangler secret put`):
@@ -31,7 +33,7 @@ preview_urls = true
 [vars]
 # Uncomment to enable dev mode in non-production environments
 DEV_MODE = "false"
-DEBUG = "false"
+DEBUG = "true"
 
 # Optional: bindings (currently commented out)
 # [[kv_namespaces]]
@@ -44,24 +46,11 @@ DEBUG = "false"
 # database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 [observability]
-[observability.logs]
-enabled = false
-invocation_logs = false
-[observability.traces]
-enabled = false
-
-[env.debug.vars]
-DEV_MODE = "false"
-DEBUG = "true"
-
-[env.debug.observability]
 enabled = true
-
-[env.debug.observability.logs]
+[observability.logs]
 enabled = true
 invocation_logs = true
-
-[env.debug.observability.traces]
+[observability.traces]
 enabled = false
 
 [assets]
