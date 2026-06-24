@@ -41,7 +41,8 @@
   "ucm": {
     "name": "UCM Contact Form",
     "notifyTo": [
-      "ucm@tanuj.xyz"
+      "ucm@tanuj.xyz",
+      "staff@u-c-m.org"
     ],
     "thankYouUrl": "/thank-you",
     "subject": "New UCM Contact Form Submission",
@@ -50,7 +51,8 @@
   "ucm-applications": { 
     "name": "UCM Application Form",
     "notifyTo": [
-      "ucm@tanuj.xyz"
+      "ucm@tanuj.xyz",
+      "staff@u-c-m.org"
     ],
     "thankYouUrl": "/thank-you",
     "subject": "New UCM Application Form Submission",
